@@ -443,64 +443,163 @@ h3 {
   50% { opacity: 0.3; }
 }
 
-.mg-beast-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.7rem;
-  width: 100%;
-}
-
-.mg-beast {
-  --beast-color: var(--mg-gold);
-  appearance: none;
-  border: 1.5px solid var(--mg-panel-border);
-  background: var(--mg-panel);
-  border-radius: 12px;
-  padding: 0.8rem 0.4rem;
+/* ダイヤル本体。実機と同じく回して守護獣を合わせ、扉のボタンで確定する */
+.mg-dial-wrap {
+  position: relative;
+  width: min(260px, 78vw);
+  aspect-ratio: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
-  cursor: pointer;
-  color: var(--mg-text-muted);
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+  justify-content: center;
+  touch-action: none;
+  user-select: none;
 }
 
-.mg-beast-grid:not(.is-active) .mg-beast {
+/* ダイヤルの上に固定された指標 */
+.mg-dial-marker {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 14px solid var(--mg-gold);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+  z-index: 2;
+}
+
+.mg-dial {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  overflow: visible;
+}
+
+.mg-dial-wrap.is-dragging .mg-dial {
+  cursor: grabbing;
+}
+
+.mg-stage1:not(.is-active) .mg-dial {
   cursor: default;
 }
 
-.mg-beast svg {
-  width: 34px;
-  height: 34px;
-  color: var(--beast-color);
-  opacity: 0.55;
-  transition: opacity 0.15s ease, filter 0.15s ease;
+.mg-dial-rim {
+  fill: #171310;
+  stroke: var(--mg-panel-border);
+  stroke-width: 3;
 }
 
-.mg-beast-name {
-  font-size: 0.78rem;
+.mg-dial-plate {
+  fill: #2c2740;
+  stroke: rgba(190, 175, 230, 0.28);
+  stroke-width: 1.5;
+}
+
+.mg-dial-face {
+  transform-origin: 120px 120px;
+}
+
+.mg-dial-notch {
+  fill: rgba(224, 169, 74, 0.45);
+}
+
+.mg-dial-slot {
+  --beast-color: var(--mg-gold);
+  color: var(--beast-color);
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+}
+
+.mg-dial-slot.is-selected {
+  opacity: 1;
+}
+
+.mg-dial-slot.is-selected .mg-dial-notch {
+  fill: var(--beast-color);
+}
+
+.mg-dial-slot.is-selected .mg-dial-icon {
+  filter: drop-shadow(0 0 6px var(--beast-color));
+}
+
+/* 中央のつまみ */
+.mg-dial-knob {
+  fill: #7a5c33;
+  stroke: #4a3a24;
+  stroke-width: 3;
+}
+
+.mg-dial-grip line {
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+/* 目盛りをまたいだ瞬間の手応え */
+.mg-dial-wrap.is-clicked .mg-dial-rim {
+  animation: mg-dial-click 0.12s ease-out;
+}
+
+@keyframes mg-dial-click {
+  0% { stroke: var(--mg-gold); }
+  100% { stroke: var(--mg-panel-border); }
+}
+
+.mg-dial-readout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  min-height: 2.6rem;
+}
+
+.mg-dial-readout-name {
+  font-family: var(--mg-font-heading);
+  font-size: 1.15rem;
   font-weight: 700;
 }
 
-.mg-beast-reading {
-  font-size: 0.65rem;
-  opacity: 0.7;
+.mg-dial-readout-reading {
+  font-size: 0.7rem;
+  color: var(--mg-text-muted);
+  letter-spacing: 0.12em;
 }
 
-.mg-beast.is-lit {
-  border-color: var(--beast-color);
-  background: color-mix(in srgb, var(--beast-color) 18%, var(--mg-panel));
-  transform: translateY(-2px);
+/* 扉のボタン */
+.mg-door-btn {
+  appearance: none;
+  position: relative;
+  width: min(200px, 60vw);
+  padding: 0.9rem 1.2rem;
+  border-radius: 8px;
+  border: 2px solid #4a3a24;
+  background: linear-gradient(180deg, #3b3350, #272038);
+  color: var(--mg-gold-soft);
+  font-family: var(--mg-font-heading);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #1a1626, 0 8px 16px rgba(0, 0, 0, 0.45);
+  transition: transform 0.06s ease, box-shadow 0.06s ease;
 }
 
-.mg-beast.is-lit svg {
-  opacity: 1;
-  filter: drop-shadow(0 0 8px var(--beast-color));
+.mg-door-btn:hover:not(:disabled) {
+  border-color: var(--mg-gold);
 }
 
-.mg-beast:disabled {
-  opacity: 0.85;
+.mg-door-btn:active:not(:disabled),
+.mg-door-btn.is-pressed {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 #1a1626, 0 3px 8px rgba(0, 0, 0, 0.45);
+}
+
+.mg-door-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* -------------------------------------------------------------------- */
@@ -687,8 +786,7 @@ h3 {
     height: 54px;
   }
 
-  .mg-beast svg {
-    width: 28px;
-    height: 28px;
+  .mg-dial-wrap {
+    width: min(220px, 72vw);
   }
 }
