@@ -1,45 +1,56 @@
 /**
  * STAGE 2「大蛇の回廊」
  *
- * 回廊に打ち出した玉が釘に当たって落ちていく、パチンコ（ピンボール）風の
- * ステージ。玉が落ちる先の「当たりポケット」を規定数当てればクリア。
- * ハズレのポケットに落ちるとライフが 1 減る。
+ * 渦巻き状の回廊に玉を転がし込む。パワーゲージで決めた勢いだけ玉が奥へ進み、
+ * 勢いを失ったところで最初に行き当たった穴に落ちる。光っている穴に落とせば成功。
+ * 強すぎると 4 つの穴をすべて通り越し、最奥の大蛇の口に飲み込まれる。
+ *
+ * 発射に乱数は一切かけていない。同じパワーなら必ず同じ穴に入る。
  */
 
 import type { StageFactory, StageHost, StageInstance } from './types';
-import { clamp, el, fitCanvas, randInt } from './util';
+import { clamp, el, fitCanvas, randIntAvoid } from './util';
 
 const W = 320;
-const H = 420;
-const BALL_R = 5;
-const GRAVITY = 780; // px/s^2
-const RESTITUTION = 0.62;
-
-interface Peg {
-  x: number;
-  y: number;
-  r: number;
-}
-
-interface Pocket {
-  x0: number;
-  x1: number;
-  hit: boolean;
-  y: number;
-}
+const H = 320;
+const CX = W / 2;
+const CY = H / 2;
+const R_OUTER = 138;
+const R_INNER = 30;
+/** 渦巻きの巻き数 */
+const TURNS = 3;
+const BALL_R = 5.5;
+const HOLE_R = 10.5;
+const HOLE_COUNT = 4;
+/** 玉の減速度 (px/s^2) */
+const DECEL = 700;
+/** 渦巻きを折れ線で近似するときの分割数 */
+const SAMPLES = 1200;
 
 interface Params {
+  /** クリアに必要な的中数 */
   goalHits: number;
-  pegRows: number;
-  hitPocketRatio: number;
-  ballSpeedJitter: number;
+  /** ライフが 1 減るまでに許されるハズレ数 */
+  maxMisses: number;
+  /** ゲージが端から端まで動く秒数 */
+  sweepTime: number;
+  /** 狙う穴に対応するパワー帯をゲージ上に見せるか */
+  guide: 'always' | 'hint' | 'none';
 }
 
 const PARAMS: Record<string, Params> = {
-  easy: { goalHits: 3, pegRows: 6, hitPocketRatio: 0.55, ballSpeedJitter: 40 },
-  normal: { goalHits: 4, pegRows: 7, hitPocketRatio: 0.42, ballSpeedJitter: 60 },
-  hard: { goalHits: 5, pegRows: 8, hitPocketRatio: 0.3, ballSpeedJitter: 90 },
+  easy: { goalHits: 2, maxMisses: 4, sweepTime: 1.4, guide: 'always' },
+  normal: { goalHits: 3, maxMisses: 3, sweepTime: 1.0, guide: 'hint' },
+  hard: { goalHits: 4, maxMisses: 3, sweepTime: 0.65, guide: 'none' },
 };
+
+/** ガイドを一時表示する難易度で、的が変わってから見せ続ける時間 (ms) */
+const HINT_DURATION = 2500;
+
+interface Point {
+  x: number;
+  y: number;
+}
 
 export const createStage2: StageFactory = (
   root: HTMLElement,
@@ -47,217 +58,361 @@ export const createStage2: StageFactory = (
 ): StageInstance => {
   const params = PARAMS[host.difficulty];
 
+  // --- 画面の組み立て ---------------------------------------------------
   const wrap = el('div', 'mg-stage mg-stage2');
   const canvasWrap = el('div', 'mg-canvas-wrap');
   const canvas = el('canvas', 'mg-canvas');
-  const launcher = el('div', 'mg-launcher');
-  const power = el('div', 'mg-power-bar', '<div class="mg-power-fill"></div>');
-  const hint = el('div', 'mg-launch-hint', 'クリック（タップ）で玉を打ち出す');
-
   canvasWrap.append(canvas);
-  launcher.append(power, hint);
-  wrap.append(canvasWrap, launcher);
+
+  const gauge = el('div', 'mg-gauge');
+  gauge.innerHTML = `
+    <div class="mg-gauge-track">
+      <div class="mg-gauge-band" hidden></div>
+      <div class="mg-gauge-needle"></div>
+    </div>
+    <div class="mg-gauge-scale"><span>弱</span><span>強</span></div>
+    <p class="mg-launch-hint">タップ（クリック / スペースキー）で発射</p>
+  `;
+
+  wrap.append(canvasWrap, gauge);
   root.appendChild(wrap);
 
   const ctx = fitCanvas(canvas, W, H);
-  const powerFill = power.querySelector('.mg-power-fill') as HTMLElement;
+  const bandEl = gauge.querySelector('.mg-gauge-band') as HTMLElement;
+  const needleEl = gauge.querySelector('.mg-gauge-needle') as HTMLElement;
+  const hintEl = gauge.querySelector('.mg-launch-hint') as HTMLElement;
 
-  // --- 盤面構築 ---------------------------------------------------------
-  const pegs: Peg[] = [];
-  const rowGap = 34;
-  const topMargin = 60;
-  for (let row = 0; row < params.pegRows; row += 1) {
-    const y = topMargin + row * rowGap;
-    const cols = 5 + (row % 2);
-    const spacing = W / (cols + 1);
-    for (let c = 1; c <= cols; c += 1) {
-      const jitterX = (row % 2 === 0 ? 0 : spacing / 2);
-      pegs.push({ x: c * spacing - spacing / 2 + jitterX, y, r: 4.5 });
+  // --- 渦巻きの形を作る -------------------------------------------------
+  // 折れ線で近似し、始点からの累積距離を持っておく。
+  // これで「入口から s px の地点」を正確に引ける。
+  const pts: Point[] = [];
+  const cum: number[] = [];
+  {
+    const thetaMax = TURNS * Math.PI * 2;
+    for (let i = 0; i <= SAMPLES; i += 1) {
+      const u = i / SAMPLES;
+      const th = u * thetaMax + Math.PI / 2; // 入口を真下にする
+      const r = R_OUTER - (R_OUTER - R_INNER) * u;
+      pts.push({ x: CX + r * Math.cos(th), y: CY + r * Math.sin(th) });
+    }
+    cum.push(0);
+    for (let i = 1; i <= SAMPLES; i += 1) {
+      cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
     }
   }
+  const TOTAL = cum[SAMPLES];
+  /** 穴の間隔。入口〜穴1、穴1〜穴2 … 穴4〜最奥がすべてこの長さになる */
+  const GAP = TOTAL / (HOLE_COUNT + 1);
+  const holeS: number[] = Array.from({ length: HOLE_COUNT }, (_, i) => (i + 1) * GAP);
+  /**
+   * 玉が「落ちるほど遅くなる」速さ。
+   * GAP と釣り合わせておくと、パワー最小でも必ず穴1には届く。
+   */
+  const CAPTURE_SPEED = Math.sqrt(2 * DECEL * GAP);
 
-  const pocketCount = 8;
-  const pocketW = W / pocketCount;
-  const pocketY = H - 24;
-  const hitIndexes = new Set<number>();
-  {
-    const wantHits = Math.max(2, Math.round(pocketCount * params.hitPocketRatio));
-    while (hitIndexes.size < wantHits) hitIndexes.add(randInt(pocketCount));
+  function posAt(s: number): Point {
+    const target = clamp(s, 0, TOTAL);
+    let lo = 0;
+    let hi = SAMPLES;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (cum[mid] < target) lo = mid + 1;
+      else hi = mid;
+    }
+    if (lo === 0) return pts[0];
+    const segLen = cum[lo] - cum[lo - 1];
+    const k = segLen > 0 ? (target - cum[lo - 1]) / segLen : 0;
+    const a = pts[lo - 1];
+    const b = pts[lo];
+    return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
   }
-  const pockets: Pocket[] = Array.from({ length: pocketCount }, (_, i) => ({
-    x0: i * pocketW,
-    x1: (i + 1) * pocketW,
-    hit: hitIndexes.has(i),
-    y: pocketY,
-  }));
 
-  interface Ball {
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
-    alive: boolean;
-  }
+  const holePos: Point[] = holeS.map((s) => posAt(s));
+  const mouthPos: Point = posAt(TOTAL);
 
-  let balls: Ball[] = [];
+  // --- 状態 -------------------------------------------------------------
+  type Phase = 'aiming' | 'rolling' | 'pause';
+
+  let phase: Phase = 'aiming';
+  let gaugeT = 0;
+  let gaugeDir = 1;
+  let target = Math.floor(Math.random() * HOLE_COUNT);
+  let targetLitAt = performance.now();
+
+  let ballS = 0;
+  let ballV = 0;
+  let ballAlive = false;
+  let pendingHole: number | null = null;
+  let dropAnim = 0; // 穴に吸い込まれる演出の残り (1 → 0)
+  let dropAt: Point | null = null;
+  let lastTurnTick = 0;
+
   let hits = 0;
   let misses = 0;
-  const maxMisses = 4; // これを超えたらこのステージではミス扱い（ライフを消費）
   let running = true;
   let rafId = 0;
   let lastT = 0;
-
-  let charging = false;
-  let chargeStart = 0;
-
   let resolveRun: ((v: boolean) => void) | null = null;
 
   function updateMeter(): void {
-    host.setMeter(`${hits} / ${params.goalHits} 的中`);
+    host.setMeter(
+      `${hits} / ${params.goalHits} 的中 ・ ハズレ ${misses} / ${params.maxMisses}`,
+    );
   }
 
-  function launchBall(strength: number): void {
+  /** 穴 j に落とすためのパワー帯。ゲージ全体を「穴の数 + 大蛇の口」で割ったもの */
+  function bandFor(j: number): { from: number; to: number } {
+    return { from: j / (HOLE_COUNT + 1), to: (j + 1) / (HOLE_COUNT + 1) };
+  }
+
+  function guideVisible(): boolean {
+    if (params.guide === 'always') return true;
+    if (params.guide === 'none') return false;
+    return performance.now() - targetLitAt < HINT_DURATION;
+  }
+
+  function newTarget(): void {
+    target = randIntAvoid(HOLE_COUNT, target);
+    targetLitAt = performance.now();
+  }
+
+  function launch(t: number): void {
     host.audio.launch();
-    const speed = 260 + strength * 260 + (Math.random() * 2 - 1) * params.ballSpeedJitter;
-    balls.push({
-      x: W / 2 + (Math.random() * 2 - 1) * 8,
-      y: H - 40,
-      vx: (Math.random() * 2 - 1) * 40,
-      vy: -speed,
-      alive: true,
-    });
+
+    // 玉は速度が CAPTURE_SPEED を下回ると穴に落ちる。
+    // v(s)^2 = v0^2 - 2*DECEL*s なので、v0 を下の式で決めると
+    // 「s が p を超えた瞬間から落ちるようになる」と一対一で対応する。
+    // つまり落ちる穴は p だけで決まり、発射した時点で確定している。
+    //
+    // フレームごとに速度を見て判定すると、判定の粒度がフレーム時間に依存して
+    // 遅い端末で結果が変わってしまう。だからここで解析的に決めておく。
+    const p = t * TOTAL;
+    pendingHole = holeS.findIndex((s) => s > p);
+    if (pendingHole < 0) pendingHole = null; // どの穴も越える = 大蛇の口
+
+    ballV = Math.sqrt(CAPTURE_SPEED * CAPTURE_SPEED + 2 * DECEL * p);
+    ballS = 0;
+    ballAlive = true;
+    lastTurnTick = 0;
+    phase = 'rolling';
+    host.setStatus('玉が回廊を転がっていく。');
   }
 
-  function onPointerDown(): void {
-    if (!running) return;
-    host.audio.unlock();
-    charging = true;
-    chargeStart = performance.now();
-  }
+  function settle(holeIndex: number | null): void {
+    ballAlive = false;
+    dropAnim = 1;
 
-  function onPointerUp(): void {
-    if (!running || !charging) return;
-    charging = false;
-    const held = clamp((performance.now() - chargeStart) / 900, 0.15, 1);
-    launchBall(held);
-    powerFill.style.width = '0%';
-  }
-
-  canvas.addEventListener('pointerdown', onPointerDown);
-  window.addEventListener('pointerup', onPointerUp);
-
-  function step(dt: number): void {
-    if (charging) {
-      const t = clamp((performance.now() - chargeStart) / 900, 0, 1);
-      powerFill.style.width = `${Math.round(t * 100)}%`;
-    }
-
-    for (const b of balls) {
-      if (!b.alive) continue;
-      b.vy += GRAVITY * dt;
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
-
-      if (b.x < BALL_R) {
-        b.x = BALL_R;
-        b.vx *= -RESTITUTION;
-        host.audio.wall();
-      } else if (b.x > W - BALL_R) {
-        b.x = W - BALL_R;
-        b.vx *= -RESTITUTION;
-        host.audio.wall();
-      }
-
-      for (const peg of pegs) {
-        const dx = b.x - peg.x;
-        const dy = b.y - peg.y;
-        const dist = Math.hypot(dx, dy);
-        const minDist = BALL_R + peg.r;
-        if (dist < minDist && dist > 0.0001) {
-          const nx = dx / dist;
-          const ny = dy / dist;
-          const overlap = minDist - dist;
-          b.x += nx * overlap;
-          b.y += ny * overlap;
-          const vn = b.vx * nx + b.vy * ny;
-          b.vx -= 2 * vn * nx * RESTITUTION;
-          b.vy -= 2 * vn * ny * RESTITUTION;
-          b.vx += (Math.random() * 2 - 1) * 18;
-          host.audio.peg();
-        }
-      }
-
-      if (b.y >= pocketY - BALL_R) {
-        b.alive = false;
-        const idx = clamp(Math.floor(b.x / pocketW), 0, pocketCount - 1);
-        const pocket = pockets[idx];
-        if (pocket.hit) {
-          hits += 1;
-          host.audio.pocket();
-          host.flash('good');
-        } else {
-          misses += 1;
-          host.audio.wrong();
-          host.flash('bad');
-        }
-        updateMeter();
-        checkOutcome();
+    if (holeIndex === null) {
+      dropAt = mouthPos;
+      host.audio.wrong();
+      host.flash('bad');
+      misses += 1;
+      host.setStatus('勢いが強すぎた。最奥の大蛇に飲み込まれた。');
+    } else {
+      dropAt = holePos[holeIndex];
+      if (holeIndex === target) {
+        hits += 1;
+        host.audio.pocket();
+        host.flash('good');
+        host.setStatus('光る穴に落ちた。');
+      } else {
+        misses += 1;
+        host.audio.wrong();
+        host.flash('bad');
+        host.setStatus(`${holeIndex + 1}番の穴に落ちた。狙いは別の穴だ。`);
       }
     }
-    balls = balls.filter((b) => b.alive);
+
+    updateMeter();
+    phase = 'pause';
+    window.setTimeout(afterSettle, 900);
   }
 
-  function checkOutcome(): void {
+  function afterSettle(): void {
     if (!running) return;
+
     if (hits >= params.goalHits) {
       running = false;
       host.setStatus('大蛇の回廊を抜けた。');
       window.setTimeout(() => resolveRun?.(true), 500);
       return;
     }
-    if (misses >= maxMisses) {
-      const left = host.miss('ハズレのポケットに玉が落ちた');
+
+    if (misses >= params.maxMisses) {
       misses = 0;
+      updateMeter();
+      const left = host.miss('狙った穴に玉を入れられなかった');
       if (left <= 0) {
         running = false;
         window.setTimeout(() => resolveRun?.(false), 300);
-      } else {
-        host.setStatus('毒だまりに落ちた。狙いを定め直せ。');
+        return;
       }
     }
+
+    newTarget();
+    phase = 'aiming';
+    host.setStatus('光る穴に落ちるパワーで発射しろ。');
+  }
+
+  function onPress(): void {
+    if (!running) return;
+    host.audio.unlock();
+    if (phase !== 'aiming') return;
+    launch(gaugeT);
+  }
+
+  function onKeyDown(e: KeyboardEvent): void {
+    if (e.key !== ' ' && e.key !== 'Enter') return;
+    e.preventDefault();
+    onPress();
+  }
+
+  wrap.addEventListener('pointerdown', onPress);
+  window.addEventListener('keydown', onKeyDown);
+
+  // --- 毎フレームの更新 -------------------------------------------------
+  function step(dt: number): void {
+    if (phase === 'aiming') {
+      gaugeT += (gaugeDir * dt) / params.sweepTime;
+      if (gaugeT >= 1) {
+        gaugeT = 1;
+        gaugeDir = -1;
+      } else if (gaugeT <= 0) {
+        gaugeT = 0;
+        gaugeDir = 1;
+      }
+    }
+
+    if (dropAnim > 0) dropAnim = Math.max(0, dropAnim - dt * 4);
+
+    if (!ballAlive) return;
+
+    // 等加速度なので、フレーム内の平均速度で進めれば誤差なく積分できる。
+    // 単純に「減速してから進む」と少しずつ距離が足りなくなり、
+    // 玉が穴の手前で止まって見える。
+    const vNext = Math.max(0, ballV - DECEL * dt);
+    ballS += ((ballV + vNext) / 2) * dt;
+    ballV = vNext;
+
+    // 一周ごとに転がる音を鳴らす
+    const turn = Math.floor(ballS / (TOTAL / TURNS));
+    if (turn > lastTurnTick) {
+      lastTurnTick = turn;
+      host.audio.peg();
+    }
+
+    // 落ちる先は発射時に確定済み。そこへ到達したかだけを見る
+    const goalS = pendingHole === null ? TOTAL : holeS[pendingHole];
+    if (ballS >= goalS || ballV <= 0) {
+      ballS = goalS;
+      settle(pendingHole);
+    }
+  }
+
+  function renderGauge(): void {
+    needleEl.style.left = `${gaugeT * 100}%`;
+    const show = phase === 'aiming' && guideVisible();
+    bandEl.hidden = !show;
+    if (show) {
+      const { from, to } = bandFor(target);
+      bandEl.style.left = `${from * 100}%`;
+      bandEl.style.width = `${(to - from) * 100}%`;
+    }
+  }
+
+  // --- 描画 -------------------------------------------------------------
+  function strokeSpiral(color: string, width: number): void {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i <= SAMPLES; i += 1) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
+  }
+
+  function drawSnakeMouth(): void {
+    const outer = R_INNER * 0.72;
+    ctx.fillStyle = '#0b0908';
+    ctx.beginPath();
+    ctx.arc(mouthPos.x, mouthPos.y, outer, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#c9bda6';
+    const fangs = 8;
+    for (let i = 0; i < fangs; i += 1) {
+      const a = (i / fangs) * Math.PI * 2;
+      const inner = outer - 6;
+      ctx.beginPath();
+      ctx.moveTo(mouthPos.x + Math.cos(a - 0.16) * outer, mouthPos.y + Math.sin(a - 0.16) * outer);
+      ctx.lineTo(mouthPos.x + Math.cos(a) * inner, mouthPos.y + Math.sin(a) * inner);
+      ctx.lineTo(mouthPos.x + Math.cos(a + 0.16) * outer, mouthPos.y + Math.sin(a + 0.16) * outer);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  function drawHoles(): void {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let j = 0; j < HOLE_COUNT; j += 1) {
+      const p = holePos[j];
+      const lit = j === target && phase !== 'pause';
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, HOLE_R, 0, Math.PI * 2);
+      ctx.fillStyle = lit ? 'rgba(94, 194, 122, 0.85)' : '#0d0b08';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = lit ? '#8ef0ab' : 'rgba(224, 169, 74, 0.5)';
+      ctx.stroke();
+
+      if (lit) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, HOLE_R + 5, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(94, 194, 122, 0.35)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = lit ? '#0d1a10' : 'rgba(224, 169, 74, 0.7)';
+      ctx.font = 'bold 10px "Noto Sans JP", sans-serif';
+      ctx.fillText(String(j + 1), p.x, p.y + 0.5);
+    }
+  }
+
+  function drawEntrance(): void {
+    const p = pts[0];
+    ctx.strokeStyle = 'rgba(224, 169, 74, 0.8)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(p.x - 9, p.y + 12);
+    ctx.lineTo(p.x - 9, p.y - 4);
+    ctx.moveTo(p.x + 9, p.y + 12);
+    ctx.lineTo(p.x + 9, p.y - 4);
+    ctx.stroke();
   }
 
   function draw(): void {
     ctx.clearRect(0, 0, W, H);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
-    // 背景の縦縞（回廊っぽさ）
-    ctx.fillStyle = 'rgba(224,169,74,0.04)';
-    for (let i = 0; i < 6; i += 1) {
-      ctx.fillRect((i * W) / 6, 0, 2, H);
-    }
+    strokeSpiral('rgba(90, 78, 120, 0.55)', 20);
+    strokeSpiral('rgba(190, 175, 230, 0.25)', 1.5);
+    drawSnakeMouth();
+    drawHoles();
+    drawEntrance();
 
-    // ポケット
-    for (const p of pockets) {
-      ctx.fillStyle = p.hit ? 'rgba(94, 194, 122, 0.28)' : 'rgba(240, 125, 125, 0.14)';
-      ctx.fillRect(p.x0 + 2, pocketY, pocketW - 4, H - pocketY);
-      ctx.strokeStyle = p.hit ? '#5ec27a' : 'rgba(240,125,125,0.5)';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(p.x0 + 2, pocketY, pocketW - 4, H - pocketY - 1);
-    }
-
-    // 釘
-    ctx.fillStyle = '#e0a94a';
-    for (const peg of pegs) {
+    if (ballAlive) {
+      const p = posAt(ballS);
+      ctx.fillStyle = '#f4f1e8';
       ctx.beginPath();
-      ctx.arc(peg.x, peg.y, peg.r, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, BALL_R, 0, Math.PI * 2);
       ctx.fill();
-    }
-
-    // 玉
-    ctx.fillStyle = '#f4f1e8';
-    for (const b of balls) {
+    } else if (dropAnim > 0 && dropAt) {
+      ctx.fillStyle = `rgba(244, 241, 232, ${dropAnim})`;
       ctx.beginPath();
-      ctx.arc(b.x, b.y, BALL_R, 0, Math.PI * 2);
+      ctx.arc(dropAt.x, dropAt.y, BALL_R * dropAnim, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -267,12 +422,16 @@ export const createStage2: StageFactory = (
     const dt = Math.min((t - lastT) / 1000, 0.032);
     lastT = t;
     step(dt);
+    renderGauge();
     draw();
-    rafId = requestAnimationFrame(loop);
+    if (running) rafId = requestAnimationFrame(loop);
   }
 
   function run(): Promise<boolean> {
-    host.setStatus('パワーを溜めて玉を打ち出し、光るポケットを狙え。');
+    host.setStatus('光る穴に落ちるパワーで発射しろ。');
+    if (params.guide === 'none') {
+      hintEl.textContent = 'タップで発射 ・ 目安の表示はない';
+    }
     updateMeter();
     return new Promise((resolve) => {
       resolveRun = resolve;
@@ -283,8 +442,8 @@ export const createStage2: StageFactory = (
   function dispose(): void {
     running = false;
     cancelAnimationFrame(rafId);
-    canvas.removeEventListener('pointerdown', onPointerDown);
-    window.removeEventListener('pointerup', onPointerUp);
+    wrap.removeEventListener('pointerdown', onPress);
+    window.removeEventListener('keydown', onKeyDown);
     wrap.remove();
   }
 

@@ -594,32 +594,58 @@ h3 {
   touch-action: none;
 }
 
-.mg-launcher {
+/* パワーゲージ。針が左右に往復し、押した瞬間の位置で飛距離が決まる */
+.mg-gauge {
   width: 100%;
   max-width: 320px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
+  align-items: stretch;
+  gap: 0.3rem;
+  user-select: none;
 }
 
-.mg-power-bar {
+.mg-gauge-track {
+  position: relative;
   width: 100%;
-  height: 10px;
-  border-radius: 999px;
-  background: var(--mg-panel);
+  height: 20px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #2a2013, #3f3120);
   border: 1px solid var(--mg-panel-border);
   overflow: hidden;
 }
 
-.mg-power-fill {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, var(--mg-gold), var(--mg-bad));
-  transition: width 0.05s linear;
+/* 狙う穴に対応するパワー帯。難易度によって出したり隠したりする */
+.mg-gauge-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(94, 194, 122, 0.32);
+  border-left: 1px solid rgba(94, 194, 122, 0.8);
+  border-right: 1px solid rgba(94, 194, 122, 0.8);
+}
+
+.mg-gauge-needle {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 3px;
+  margin-left: -1.5px;
+  background: var(--mg-text);
+  box-shadow: 0 0 8px 2px rgba(244, 241, 232, 0.55);
+}
+
+.mg-gauge-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--mg-text-muted);
+  letter-spacing: 0.1em;
 }
 
 .mg-launch-hint {
+  margin: 0;
+  text-align: center;
   font-size: 0.78rem;
   color: var(--mg-text-muted);
 }
