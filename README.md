@@ -34,6 +34,15 @@ npm run preview   # ビルド結果をローカルでプレビュー
 npm run typecheck # 型チェックのみ実行
 ```
 
+## GitHub Pages への公開
+
+このリポジトリには `.github/workflows/deploy-pages.yml` が入っており、`main` ブランチに push すると自動でビルドして GitHub Pages に公開される。初回のみリポジトリ側で以下の設定が必要。
+
+1. GitHub の当リポジトリで **Settings → Pages** を開く
+2. **Build and deployment → Source** を `GitHub Actions` に設定する
+
+設定後は `main` への push（または Actions タブから手動実行）で公開され、`https://k-m7m.github.io/megalis-web/` からアクセスできるようになる。
+
 ## ディレクトリ構成
 
 ```
