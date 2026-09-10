@@ -606,15 +606,16 @@ h3 {
 /* ステージ3：封印の扉                                                    */
 /* -------------------------------------------------------------------- */
 
-.mg-door {
-  position: relative;
-  padding: 1.2rem;
-  border-radius: 16px;
-  background: linear-gradient(160deg, #2a2013, #1a1410);
-  border: 2px solid var(--mg-panel-border);
+.mg-door-scene {
+  width: 100%;
+  max-width: 340px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid #2a2114;
+  box-shadow: var(--mg-shadow);
 }
 
-.mg-door.is-shaking {
+.mg-door-scene.is-shaking {
   animation: mg-shake 0.5s ease;
 }
 
@@ -626,47 +627,144 @@ h3 {
   80% { transform: translateX(4px); }
 }
 
-.mg-slab-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.6rem;
+.mg-door-svg {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
+/* 壁の彫り込み */
+.mg-wall-mark {
+  fill: rgba(0, 0, 0, 0.22);
+}
+
+.mg-wall-course {
+  stroke: rgba(0, 0, 0, 0.18);
+  stroke-width: 1.5;
+}
+
+.mg-lintel {
+  fill: #6d5837;
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 1.5;
+}
+
+.mg-jamb {
+  stroke: rgba(0, 0, 0, 0.3);
+  stroke-width: 1.5;
+}
+
+/* 祭室の縁。内側に影を落として奥まって見せる */
+.mg-room-edge {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 5;
+}
+
+.mg-plinth {
+  fill: #5c4a2e;
+  stroke: rgba(0, 0, 0, 0.3);
+  stroke-width: 1.5;
+}
+
+/* 守護者の浮き彫り */
+.mg-relief path,
+.mg-relief circle {
+  fill: #b39468;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+}
+
+.mg-relief .mg-relief-inlay {
+  fill: #3f3350;
+}
+
+.mg-relief .mg-relief-skin {
+  fill: #8f7345;
+}
+
+.mg-relief .mg-relief-eye {
+  fill: #17130d;
+  stroke: none;
+}
+
+/* 有翼日輪。封印の状態を映す */
+.mg-winged-disc path {
+  fill: #7d6540;
+  stroke: rgba(0, 0, 0, 0.4);
+  stroke-width: 0.8;
+  transition: fill 0.3s ease;
+}
+
+.mg-winged-disc .mg-disc-core {
+  fill: #4a3a24;
+}
+
+.mg-winged-disc.is-playing .mg-disc-core {
+  fill: var(--mg-focus);
+  filter: drop-shadow(0 0 6px var(--mg-focus));
+}
+
+.mg-winged-disc.is-broken path {
+  fill: var(--mg-gold);
+}
+
+.mg-winged-disc.is-broken .mg-disc-core {
+  fill: var(--mg-good);
+  filter: drop-shadow(0 0 10px var(--mg-good));
+}
+
+/* 石板 */
 .mg-slab {
-  appearance: none;
-  width: 64px;
-  height: 64px;
-  border-radius: 8px;
-  border: 1.5px solid var(--mg-panel-border);
-  background: #241c14;
-  color: var(--mg-text-muted);
+  cursor: default;
+}
+
+.mg-door-svg.is-active .mg-slab {
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.mg-slab-face {
+  fill: #2b2338;
+  stroke: rgba(190, 175, 230, 0.22);
+  stroke-width: 1.5;
+  transition: fill 0.12s ease, stroke 0.12s ease;
 }
 
 .mg-slab-glyph {
-  width: 30px;
-  height: 30px;
+  color: rgba(190, 175, 230, 0.4);
+  transition: color 0.12s ease;
+  pointer-events: none;
 }
 
-.mg-slab.is-lit {
-  border-color: var(--mg-gold);
-  background: color-mix(in srgb, var(--mg-gold) 24%, #241c14);
-  color: var(--mg-gold-soft);
+.mg-door-svg.is-active .mg-slab:hover .mg-slab-face {
+  stroke: rgba(224, 169, 74, 0.7);
+}
+
+.mg-slab.is-lit .mg-slab-face {
+  fill: #c8a24a;
+  stroke: var(--mg-gold-soft);
+  filter: drop-shadow(0 0 8px rgba(224, 169, 74, 0.8));
+}
+
+.mg-slab.is-lit .mg-slab-glyph {
+  color: #1a1410;
+}
+
+/* 扉が開いたとき、祭室の奥から光が差す */
+.mg-door-scene.is-open .mg-slab-face {
+  fill: #e6cf9a;
+  stroke: #fff3cf;
+}
+
+.mg-door-scene.is-open .mg-slab-glyph {
+  color: #1a1410;
 }
 
 .mg-seal {
-  margin-top: -0.4rem;
   font-size: 0.75rem;
   letter-spacing: 0.3em;
   color: var(--mg-text-muted);
-}
-
-.mg-seal.is-playing {
-  color: var(--mg-focus);
 }
 
 .mg-seal.is-broken {
