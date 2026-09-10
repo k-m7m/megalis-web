@@ -1,0 +1,668 @@
+/* ==========================================================================
+   電脳迷宮メガリス Web版 - グローバルスタイル
+
+   石造りの神殿と黄金の秘宝をイメージした配色でまとめている。
+   ========================================================================== */
+
+:root {
+  --mg-bg: #14100b;
+  --mg-bg-soft: #1c1712;
+  --mg-panel: #221b14;
+  --mg-panel-border: #3a2e1e;
+  --mg-text: #f4f1e8;
+  --mg-text-muted: #b8ab8f;
+  --mg-gold: #e0a94a;
+  --mg-gold-soft: #f0d090;
+  --mg-good: #5ec27a;
+  --mg-bad: #f07d7d;
+  --mg-focus: #7fd6e8;
+
+  --mg-font-heading: 'Cinzel', 'Noto Sans JP', serif;
+  --mg-font-body: 'Noto Sans JP', sans-serif;
+
+  --mg-radius: 14px;
+  --mg-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(ellipse at top, #2a2013 0%, var(--mg-bg) 55%, #0c0906 100%);
+  color: var(--mg-text);
+  font-family: var(--mg-font-body);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  overflow-wrap: break-word;
+}
+
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(16px, 4vw, 32px);
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--mg-font-heading);
+  color: var(--mg-gold-soft);
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+/* -------------------------------------------------------------------- */
+/* 共通ビュー・レイアウト                                                */
+/* -------------------------------------------------------------------- */
+
+.mg-view {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  margin: auto 0;
+  text-align: center;
+}
+
+.mg-view-title {
+  font-size: clamp(1.4rem, 5vw, 1.9rem);
+}
+
+.mg-eyebrow {
+  color: var(--mg-gold);
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* -------------------------------------------------------------------- */
+/* タイトル画面                                                          */
+/* -------------------------------------------------------------------- */
+
+.mg-title-view {
+  gap: 0.75rem;
+}
+
+.mg-pyramid {
+  position: relative;
+  width: 180px;
+  height: 150px;
+  margin-bottom: 0.5rem;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5));
+}
+
+.mg-pyramid-face {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+}
+
+.mg-pyramid-face--left {
+  clip-path: polygon(50% 0%, 50% 100%, 0% 100%);
+  background: linear-gradient(160deg, #4a3a24, #2c2214);
+}
+
+.mg-pyramid-face--right {
+  clip-path: polygon(50% 0%, 100% 100%, 50% 100%);
+  background: linear-gradient(200deg, #3a2e1e, #1c1610);
+}
+
+.mg-pyramid-glow {
+  position: absolute;
+  top: 46px;
+  left: 50%;
+  width: 26px;
+  height: 26px;
+  transform: translateX(-50%) rotate(45deg);
+  background: radial-gradient(circle, var(--mg-gold-soft), var(--mg-gold) 60%, transparent 75%);
+  box-shadow: 0 0 24px 6px rgba(224, 169, 74, 0.55);
+  animation: mg-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes mg-pulse {
+  0%, 100% { opacity: 0.7; transform: translateX(-50%) rotate(45deg) scale(0.92); }
+  50% { opacity: 1; transform: translateX(-50%) rotate(45deg) scale(1.08); }
+}
+
+.mg-title {
+  font-size: clamp(2rem, 8vw, 2.9rem);
+  line-height: 1.15;
+}
+
+.mg-title span {
+  color: var(--mg-gold);
+}
+
+.mg-subtitle {
+  color: var(--mg-text-muted);
+  font-size: 0.95rem;
+  max-width: 320px;
+}
+
+.mg-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 300px;
+  margin-top: 0.5rem;
+}
+
+.mg-fan-note {
+  margin-top: 1rem;
+  font-size: 0.72rem;
+  line-height: 1.6;
+  color: var(--mg-text-muted);
+  opacity: 0.75;
+  max-width: 360px;
+}
+
+/* -------------------------------------------------------------------- */
+/* ボタン・カード                                                        */
+/* -------------------------------------------------------------------- */
+
+.mg-btn {
+  appearance: none;
+  border: 1px solid var(--mg-panel-border);
+  border-radius: 999px;
+  padding: 0.85em 1.6em;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--mg-panel);
+  color: var(--mg-text);
+  transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.mg-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--mg-gold);
+}
+
+.mg-btn:active {
+  transform: translateY(0);
+}
+
+.mg-btn--primary {
+  background: linear-gradient(160deg, var(--mg-gold-soft), var(--mg-gold));
+  color: #1a1410;
+  border-color: transparent;
+  box-shadow: 0 6px 18px rgba(224, 169, 74, 0.28);
+}
+
+.mg-btn--ghost {
+  background: transparent;
+  border-color: var(--mg-panel-border);
+  color: var(--mg-text-muted);
+  font-weight: 500;
+}
+
+.mg-btn--ghost:hover {
+  color: var(--mg-text);
+}
+
+.mg-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: 100%;
+}
+
+.mg-card {
+  appearance: none;
+  text-align: left;
+  border: 1px solid var(--mg-panel-border);
+  background: var(--mg-panel);
+  border-radius: var(--mg-radius);
+  padding: 1rem 1.2rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  transition: border-color 0.15s ease, transform 0.12s ease;
+}
+
+.mg-card:hover {
+  border-color: var(--mg-gold);
+  transform: translateY(-2px);
+}
+
+.mg-card-eyebrow {
+  font-size: 0.72rem;
+  color: var(--mg-gold);
+  letter-spacing: 0.08em;
+}
+
+.mg-card-title {
+  font-family: var(--mg-font-heading);
+  font-size: 1.1rem;
+  color: var(--mg-gold-soft);
+}
+
+.mg-card-desc {
+  font-size: 0.85rem;
+  color: var(--mg-text-muted);
+}
+
+.mg-mute-btn {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--mg-panel-border);
+  background: var(--mg-panel);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* -------------------------------------------------------------------- */
+/* ステージ紹介画面                                                      */
+/* -------------------------------------------------------------------- */
+
+.mg-intro-view {
+  align-items: stretch;
+}
+
+.mg-intro-kind {
+  color: var(--mg-focus);
+  font-weight: 700;
+  margin: 0;
+}
+
+.mg-intro-brief {
+  color: var(--mg-text-muted);
+}
+
+.mg-intro-howto {
+  text-align: left;
+  background: var(--mg-panel);
+  border: 1px solid var(--mg-panel-border);
+  border-radius: var(--mg-radius);
+  padding: 1rem 1.2rem 1rem 1.8rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.mg-intro-howto li {
+  color: var(--mg-text-muted);
+}
+
+/* -------------------------------------------------------------------- */
+/* プレイ中：HUD                                                        */
+/* -------------------------------------------------------------------- */
+
+.mg-play-view {
+  max-width: 560px;
+  gap: 0.75rem;
+}
+
+.mg-hud {
+  width: 100%;
+  background: var(--mg-panel);
+  border: 1px solid var(--mg-panel-border);
+  border-radius: var(--mg-radius);
+  padding: 0.9rem 1.1rem;
+  box-shadow: var(--mg-shadow);
+  transition: box-shadow 0.25s ease;
+}
+
+.mg-hud-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.mg-hud-row--top {
+  font-size: 0.75rem;
+  color: var(--mg-text-muted);
+  letter-spacing: 0.04em;
+}
+
+.mg-hud-diff {
+  color: var(--mg-gold);
+  font-weight: 700;
+}
+
+.mg-hud-row--mid {
+  margin-top: 0.3rem;
+}
+
+.mg-hud-stage-title {
+  font-size: 1.15rem;
+}
+
+.mg-hud-lives {
+  font-size: 1.1rem;
+  letter-spacing: 0.15em;
+  color: var(--mg-gold);
+}
+
+.mg-life {
+  opacity: 0.3;
+}
+
+.mg-life.is-on {
+  opacity: 1;
+}
+
+.mg-hud-status {
+  margin: 0.6rem 0 0;
+  font-size: 0.9rem;
+  color: var(--mg-text-muted);
+  min-height: 1.4em;
+}
+
+.mg-hud-meter {
+  margin: 0.15rem 0 0;
+  font-family: 'Cinzel', monospace;
+  font-size: 0.85rem;
+  color: var(--mg-focus);
+  min-height: 1.2em;
+}
+
+@keyframes mg-flash-good {
+  0% { box-shadow: 0 0 0 0 rgba(94, 194, 122, 0.7); }
+  100% { box-shadow: 0 0 0 14px rgba(94, 194, 122, 0); }
+}
+
+@keyframes mg-flash-bad {
+  0% { box-shadow: 0 0 0 0 rgba(240, 125, 125, 0.7); }
+  100% { box-shadow: 0 0 0 14px rgba(240, 125, 125, 0); }
+}
+
+.mg-flash-good {
+  animation: mg-flash-good 0.5s ease-out;
+}
+
+.mg-flash-bad {
+  animation: mg-flash-bad 0.5s ease-out;
+}
+
+.mg-stage-root {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.mg-stage {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* -------------------------------------------------------------------- */
+/* ステージ1：守護獣の叫び                                                */
+/* -------------------------------------------------------------------- */
+
+.mg-listener {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--mg-text-muted);
+  font-size: 0.85rem;
+}
+
+.mg-listener-icon {
+  font-size: 1.3rem;
+  color: var(--mg-focus);
+}
+
+.mg-listener.is-playing .mg-listener-icon {
+  animation: mg-blink 0.4s ease-in-out infinite;
+}
+
+@keyframes mg-blink {
+  50% { opacity: 0.3; }
+}
+
+.mg-beast-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.7rem;
+  width: 100%;
+}
+
+.mg-beast {
+  --beast-color: var(--mg-gold);
+  appearance: none;
+  border: 1.5px solid var(--mg-panel-border);
+  background: var(--mg-panel);
+  border-radius: 12px;
+  padding: 0.8rem 0.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  color: var(--mg-text-muted);
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+}
+
+.mg-beast-grid:not(.is-active) .mg-beast {
+  cursor: default;
+}
+
+.mg-beast svg {
+  width: 34px;
+  height: 34px;
+  color: var(--beast-color);
+  opacity: 0.55;
+  transition: opacity 0.15s ease, filter 0.15s ease;
+}
+
+.mg-beast-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.mg-beast-reading {
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+
+.mg-beast.is-lit {
+  border-color: var(--beast-color);
+  background: color-mix(in srgb, var(--beast-color) 18%, var(--mg-panel));
+  transform: translateY(-2px);
+}
+
+.mg-beast.is-lit svg {
+  opacity: 1;
+  filter: drop-shadow(0 0 8px var(--beast-color));
+}
+
+.mg-beast:disabled {
+  opacity: 0.85;
+}
+
+/* -------------------------------------------------------------------- */
+/* ステージ3：封印の扉                                                    */
+/* -------------------------------------------------------------------- */
+
+.mg-door {
+  position: relative;
+  padding: 1.2rem;
+  border-radius: 16px;
+  background: linear-gradient(160deg, #2a2013, #1a1410);
+  border: 2px solid var(--mg-panel-border);
+}
+
+.mg-door.is-shaking {
+  animation: mg-shake 0.5s ease;
+}
+
+@keyframes mg-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.mg-slab-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+
+.mg-slab {
+  appearance: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  border: 1.5px solid var(--mg-panel-border);
+  background: #241c14;
+  color: var(--mg-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.mg-slab-glyph {
+  width: 30px;
+  height: 30px;
+}
+
+.mg-slab.is-lit {
+  border-color: var(--mg-gold);
+  background: color-mix(in srgb, var(--mg-gold) 24%, #241c14);
+  color: var(--mg-gold-soft);
+}
+
+.mg-seal {
+  margin-top: -0.4rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  color: var(--mg-text-muted);
+}
+
+.mg-seal.is-playing {
+  color: var(--mg-focus);
+}
+
+.mg-seal.is-broken {
+  color: var(--mg-good);
+}
+
+/* -------------------------------------------------------------------- */
+/* ステージ2・4：canvas 共通                                              */
+/* -------------------------------------------------------------------- */
+
+.mg-canvas-wrap {
+  width: 100%;
+  max-width: 320px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1.5px solid var(--mg-panel-border);
+  background: #100c08;
+}
+
+.mg-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;
+}
+
+.mg-launcher {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.mg-power-bar {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--mg-panel);
+  border: 1px solid var(--mg-panel-border);
+  overflow: hidden;
+}
+
+.mg-power-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--mg-gold), var(--mg-bad));
+  transition: width 0.05s linear;
+}
+
+.mg-launch-hint {
+  font-size: 0.78rem;
+  color: var(--mg-text-muted);
+}
+
+/* -------------------------------------------------------------------- */
+/* 結果画面                                                              */
+/* -------------------------------------------------------------------- */
+
+.mg-result-clear {
+  color: var(--mg-good);
+}
+
+.mg-result-fail {
+  color: var(--mg-bad);
+}
+
+.mg-result-diff {
+  color: var(--mg-text-muted);
+  font-size: 0.85rem;
+}
+
+.mg-treasure {
+  width: 90px;
+  height: 90px;
+  margin: 0 auto;
+  background: radial-gradient(circle at 35% 30%, #fff3cf, var(--mg-gold) 55%, #8a5a1c 100%);
+  clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+  box-shadow: 0 0 40px 10px rgba(224, 169, 74, 0.5);
+  animation: mg-pulse 2s ease-in-out infinite;
+}
+
+/* -------------------------------------------------------------------- */
+/* レスポンシブ調整                                                      */
+/* -------------------------------------------------------------------- */
+
+@media (max-width: 380px) {
+  .mg-slab {
+    width: 54px;
+    height: 54px;
+  }
+
+  .mg-beast svg {
+    width: 28px;
+    height: 28px;
+  }
+}
