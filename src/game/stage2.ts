@@ -363,7 +363,7 @@ export const createStage2: StageFactory = (
       ctx.fillStyle = lit ? 'rgba(94, 194, 122, 0.85)' : '#0d0b08';
       ctx.fill();
       ctx.lineWidth = 2;
-      ctx.strokeStyle = lit ? '#8ef0ab' : 'rgba(224, 169, 74, 0.5)';
+      ctx.strokeStyle = lit ? '#8ef0ab' : 'rgba(216, 152, 104, 0.65)';
       ctx.stroke();
 
       if (lit) {
@@ -374,7 +374,7 @@ export const createStage2: StageFactory = (
         ctx.stroke();
       }
 
-      ctx.fillStyle = lit ? '#0d1a10' : 'rgba(224, 169, 74, 0.7)';
+      ctx.fillStyle = lit ? '#0d1a10' : 'rgba(232, 184, 136, 0.8)';
       ctx.font = 'bold 10px "Noto Sans JP", sans-serif';
       ctx.fillText(String(j + 1), p.x, p.y + 0.5);
     }
@@ -382,7 +382,7 @@ export const createStage2: StageFactory = (
 
   function drawEntrance(): void {
     const p = pts[0];
-    ctx.strokeStyle = 'rgba(224, 169, 74, 0.8)';
+    ctx.strokeStyle = 'rgba(232, 184, 136, 0.9)';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(p.x - 9, p.y + 12);
@@ -397,15 +397,15 @@ export const createStage2: StageFactory = (
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    strokeSpiral('rgba(90, 78, 120, 0.55)', 20);
-    strokeSpiral('rgba(190, 175, 230, 0.25)', 1.5);
+    strokeSpiral('rgba(62, 58, 82, 0.85)', 20);
+    strokeSpiral('rgba(150, 142, 190, 0.35)', 1.5);
     drawSnakeMouth();
     drawHoles();
     drawEntrance();
 
     if (ballAlive) {
       const p = posAt(ballS);
-      ctx.fillStyle = '#f4f1e8';
+      ctx.fillStyle = '#e8e4da';
       ctx.beginPath();
       ctx.arc(p.x, p.y, BALL_R, 0, Math.PI * 2);
       ctx.fill();

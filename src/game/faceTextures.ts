@@ -43,14 +43,14 @@ function edgesAt(y: number): { left: number; right: number } {
 
 /** 砂岩の地肌。石を積んだ段と、ざらつきを描く */
 function drawStone(ctx: CanvasRenderingContext2D): void {
-  ctx.fillStyle = '#8a6f45';
+  ctx.fillStyle = '#ad6e40';
   ctx.fillRect(0, 0, SIZE, SIZE);
 
   // 上ほど明るく、下ほど陰る
   const grad = ctx.createLinearGradient(0, 0, 0, SIZE);
-  grad.addColorStop(0, 'rgba(255, 226, 170, 0.35)');
+  grad.addColorStop(0, 'rgba(255, 216, 172, 0.3)');
   grad.addColorStop(0.5, 'rgba(0, 0, 0, 0)');
-  grad.addColorStop(1, 'rgba(0, 0, 0, 0.3)');
+  grad.addColorStop(1, 'rgba(70, 32, 6, 0.18)');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, SIZE, SIZE);
 
@@ -58,13 +58,13 @@ function drawStone(ctx: CanvasRenderingContext2D): void {
   const courses = 16;
   for (let i = 1; i < courses; i += 1) {
     const y = (i / courses) * SIZE;
-    ctx.strokeStyle = 'rgba(60, 44, 24, 0.5)';
+    ctx.strokeStyle = 'rgba(74, 36, 8, 0.55)';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(SIZE, y);
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(255, 232, 186, 0.16)';
+    ctx.strokeStyle = 'rgba(255, 214, 164, 0.2)';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, y + 3);
@@ -76,7 +76,7 @@ function drawStone(ctx: CanvasRenderingContext2D): void {
     const { left, right } = edgesAt(y);
     for (let b = 1; b < blocks; b += 1) {
       const x = left + ((right - left) * b) / blocks + (i % 2 ? 8 : 0);
-      ctx.strokeStyle = 'rgba(60, 44, 24, 0.38)';
+      ctx.strokeStyle = 'rgba(74, 36, 8, 0.42)';
       ctx.lineWidth = 2.5;
       ctx.beginPath();
       ctx.moveTo(x, y);
@@ -262,9 +262,9 @@ export function buildFaceArt(index: number): FaceArt {
   // 色
   const { cv: color, ctx: c } = newCanvas();
   drawStone(c);
-  drawBorder(c, 'rgba(58, 42, 22, 0.75)', 10);
-  drawGlyphBand(c, 'rgba(58, 42, 22, 0.55)');
-  drawFaceContent(c, index, 'rgba(52, 37, 19, 0.85)', 'rgba(52, 37, 19, 0.9)');
+  drawBorder(c, 'rgba(72, 34, 8, 0.8)', 10);
+  drawGlyphBand(c, 'rgba(72, 34, 8, 0.6)');
+  drawFaceContent(c, index, 'rgba(66, 30, 6, 0.88)', 'rgba(66, 30, 6, 0.92)');
 
   // 凹凸。黒いところが凹んで見える
   const { cv: bump, ctx: b } = newCanvas();
@@ -291,8 +291,8 @@ export function buildFaceArt(index: number): FaceArt {
   const { cv: glow, ctx: g } = newCanvas();
   g.fillStyle = '#000000';
   g.fillRect(0, 0, SIZE, SIZE);
-  drawGlyphBand(g, '#4a3a1e');
-  drawFaceContent(g, index, '#f0c878', '#ffe6b0');
+  drawGlyphBand(g, '#5a3418');
+  drawFaceContent(g, index, '#fcc09c', '#ffd8b8');
 
   return { color, bump, glow };
 }

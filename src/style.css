@@ -1,21 +1,45 @@
 /* ==========================================================================
    電脳迷宮メガリス Web版 - グローバルスタイル
 
-   石造りの神殿と黄金の秘宝をイメージした配色でまとめている。
+   配色は実機の写真から採った色に合わせている。
+   本体は橙寄りのテラコッタ、差し色はダイヤルの青紫。
+   背景だけは暗いままにしてある。実機は部屋に置かれた物体だが、
+   こちらは画面なので、明るい橙を全面に敷くと文字が読みにくくなる。
    ========================================================================== */
 
 :root {
-  --mg-bg: #14100b;
-  --mg-bg-soft: #1c1712;
-  --mg-panel: #221b14;
-  --mg-panel-border: #3a2e1e;
-  --mg-text: #f4f1e8;
-  --mg-text-muted: #b8ab8f;
-  --mg-gold: #e0a94a;
-  --mg-gold-soft: #f0d090;
+  /* --- 実機の写真から採った色 --- */
+  /** 本体の陰 */
+  --mg-body-dark: #7a4418;
+  /** 本体の基調 */
+  --mg-body: #b87848;
+  /** 本体の明るいところ */
+  --mg-body-lit: #d89868;
+  /** いちばん明るいところ */
+  --mg-body-hi: #e8b888;
+  /** ダイヤルの青 */
+  --mg-dial-blue: #3048a8;
+  /** ダイヤルの青の明るいほう */
+  --mg-dial-blue-lit: #6274d0;
+  /** 渦巻きカバーの濃い青紫 */
+  --mg-cover: #3e3a52;
+  /** 迷路の溝 */
+  --mg-groove: #0c0c0c;
+  /** 頂点の灯り */
+  --mg-amber: #fcc09c;
+
+  /* --- 画面で使う色 --- */
+  --mg-bg: #17100a;
+  --mg-bg-soft: #201509;
+  --mg-panel: #2a1b0f;
+  --mg-panel-border: #4a3018;
+  --mg-text: #f6efe4;
+  --mg-text-muted: #c2a888;
+  --mg-gold: var(--mg-body-lit);
+  --mg-gold-soft: var(--mg-body-hi);
   --mg-good: #5ec27a;
   --mg-bad: #f07d7d;
-  --mg-focus: #7fd6e8;
+  --mg-focus: var(--mg-dial-blue-lit);
 
   --mg-font-heading: 'Cinzel', 'Noto Sans JP', serif;
   --mg-font-body: 'Noto Sans JP', sans-serif;
@@ -35,7 +59,7 @@ body {
 
 body {
   margin: 0;
-  background: radial-gradient(ellipse at top, #2a2013 0%, var(--mg-bg) 55%, #0c0906 100%);
+  background: radial-gradient(ellipse at top, #3d2410 0%, var(--mg-bg) 55%, #0d0805 100%);
   color: var(--mg-text);
   font-family: var(--mg-font-body);
   line-height: 1.7;
@@ -116,12 +140,12 @@ h3 {
 
 .mg-pyramid-face--left {
   clip-path: polygon(50% 0%, 50% 100%, 0% 100%);
-  background: linear-gradient(160deg, #4a3a24, #2c2214);
+  background: linear-gradient(160deg, #b87848, #7a4418);
 }
 
 .mg-pyramid-face--right {
   clip-path: polygon(50% 0%, 100% 100%, 50% 100%);
-  background: linear-gradient(200deg, #3a2e1e, #1c1610);
+  background: linear-gradient(200deg, #8d5828, #4d2c0e);
 }
 
 .mg-pyramid-glow {
@@ -486,13 +510,13 @@ h3 {
 }
 
 .mg-dial-rim {
-  fill: #171310;
+  fill: #2a1b0f;
   stroke: var(--mg-panel-border);
   stroke-width: 3;
 }
 
 .mg-dial-plate {
-  fill: #2c2740;
+  fill: #35459e;
   stroke: rgba(190, 175, 230, 0.28);
   stroke-width: 1.5;
 }
@@ -527,8 +551,8 @@ h3 {
 
 /* 中央のつまみ */
 .mg-dial-knob {
-  fill: #7a5c33;
-  stroke: #4a3a24;
+  fill: #c08850;
+  stroke: #7a4418;
   stroke-width: 3;
 }
 
@@ -575,15 +599,15 @@ h3 {
   width: min(200px, 60vw);
   padding: 0.9rem 1.2rem;
   border-radius: 8px;
-  border: 2px solid #4a3a24;
-  background: linear-gradient(180deg, #3b3350, #272038);
+  border: 2px solid #7a4418;
+  background: linear-gradient(180deg, #3d4fae, #26317a);
   color: var(--mg-gold-soft);
   font-family: var(--mg-font-heading);
   font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   cursor: pointer;
-  box-shadow: 0 4px 0 #1a1626, 0 8px 16px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 4px 0 #1a2050, 0 8px 16px rgba(0, 0, 0, 0.45);
   transition: transform 0.06s ease, box-shadow 0.06s ease;
 }
 
@@ -594,7 +618,7 @@ h3 {
 .mg-door-btn:active:not(:disabled),
 .mg-door-btn.is-pressed {
   transform: translateY(4px);
-  box-shadow: 0 0 0 #1a1626, 0 3px 8px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 #1a2050, 0 3px 8px rgba(0, 0, 0, 0.45);
 }
 
 .mg-door-btn:disabled {
@@ -611,7 +635,7 @@ h3 {
   max-width: 340px;
   border-radius: 10px;
   overflow: hidden;
-  border: 2px solid #2a2114;
+  border: 2px solid #4a3018;
   box-shadow: var(--mg-shadow);
 }
 
@@ -644,7 +668,7 @@ h3 {
 }
 
 .mg-lintel {
-  fill: #6d5837;
+  fill: #b87848;
   stroke: rgba(0, 0, 0, 0.35);
   stroke-width: 1.5;
 }
@@ -662,7 +686,7 @@ h3 {
 }
 
 .mg-plinth {
-  fill: #5c4a2e;
+  fill: #9c6236;
   stroke: rgba(0, 0, 0, 0.3);
   stroke-width: 1.5;
 }
@@ -670,18 +694,18 @@ h3 {
 /* 守護者の浮き彫り */
 .mg-relief path,
 .mg-relief circle {
-  fill: #b39468;
+  fill: #e0a874;
   stroke: rgba(0, 0, 0, 0.55);
   stroke-width: 0.9;
   stroke-linejoin: round;
 }
 
 .mg-relief .mg-relief-inlay {
-  fill: #3f3350;
+  fill: #35459e;
 }
 
 .mg-relief .mg-relief-skin {
-  fill: #8f7345;
+  fill: #c08850;
 }
 
 .mg-relief .mg-relief-eye {
@@ -691,14 +715,14 @@ h3 {
 
 /* 有翼日輪。封印の状態を映す */
 .mg-winged-disc path {
-  fill: #7d6540;
+  fill: #c08850;
   stroke: rgba(0, 0, 0, 0.4);
   stroke-width: 0.8;
   transition: fill 0.3s ease;
 }
 
 .mg-winged-disc .mg-disc-core {
-  fill: #4a3a24;
+  fill: #7a4418;
 }
 
 .mg-winged-disc.is-playing .mg-disc-core {
@@ -725,7 +749,7 @@ h3 {
 }
 
 .mg-slab-face {
-  fill: #2b2338;
+  fill: #2f2b45;
   stroke: rgba(190, 175, 230, 0.22);
   stroke-width: 1.5;
   transition: fill 0.12s ease, stroke 0.12s ease;
@@ -742,7 +766,7 @@ h3 {
 }
 
 .mg-slab.is-lit .mg-slab-face {
-  fill: #c8a24a;
+  fill: #f0c088;
   stroke: var(--mg-gold-soft);
   filter: drop-shadow(0 0 8px rgba(224, 169, 74, 0.8));
 }
@@ -753,7 +777,7 @@ h3 {
 
 /* 扉が開いたとき、祭室の奥から光が差す */
 .mg-door-scene.is-open .mg-slab-face {
-  fill: #e6cf9a;
+  fill: #ffdcae;
   stroke: #fff3cf;
 }
 
@@ -781,7 +805,7 @@ h3 {
   border-radius: 12px;
   overflow: hidden;
   border: 1.5px solid var(--mg-panel-border);
-  background: #100c08;
+  background: #1c1108;
 }
 
 .mg-canvas {
@@ -807,7 +831,7 @@ h3 {
   width: 100%;
   height: 20px;
   border-radius: 6px;
-  background: linear-gradient(90deg, #2a2013, #3f3120);
+  background: linear-gradient(90deg, #4a2c12, #7a4418);
   border: 1px solid var(--mg-panel-border);
   overflow: hidden;
 }
@@ -868,7 +892,7 @@ h3 {
   width: 90px;
   height: 90px;
   margin: 0 auto;
-  background: radial-gradient(circle at 35% 30%, #fff3cf, var(--mg-gold) 55%, #8a5a1c 100%);
+  background: radial-gradient(circle at 35% 30%, #fff0d4, var(--mg-body-hi) 45%, #a05a18 100%);
   clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
   box-shadow: 0 0 40px 10px rgba(224, 169, 74, 0.5);
   animation: mg-pulse 2s ease-in-out infinite;

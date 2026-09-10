@@ -304,9 +304,9 @@ export const createStage4: StageFactory = (
     ctx.clearRect(-8, -8, W + 16, H + 16);
 
     // 台座の石壁
-    ctx.fillStyle = '#241d14';
+    ctx.fillStyle = '#8d5828';
     ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = 'rgba(224,169,74,0.06)';
+    ctx.strokeStyle = 'rgba(0,0,0,0.14)';
     ctx.lineWidth = 1;
     for (let y = 24; y < H; y += 24) {
       ctx.beginPath();
@@ -318,14 +318,14 @@ export const createStage4: StageFactory = (
     // 針金。実機と同じく黒く細い
     ctx.lineCap = 'round';
     ctx.lineJoin = 'miter';
-    ctx.strokeStyle = '#0a0908';
+    ctx.strokeStyle = '#0c0c0c';
     ctx.lineWidth = WIRE_R * 2 + 2;
     ctx.beginPath();
     ctx.moveTo(corners[0].x, corners[0].y);
     for (let i = 1; i < corners.length; i += 1) ctx.lineTo(corners[i].x, corners[i].y);
     ctx.stroke();
 
-    ctx.strokeStyle = '#57606b';
+    ctx.strokeStyle = '#3a3a3e';
     ctx.lineWidth = WIRE_R * 2 - 1;
     ctx.beginPath();
     ctx.moveTo(corners[0].x, corners[0].y);
@@ -333,7 +333,7 @@ export const createStage4: StageFactory = (
     ctx.stroke();
 
     drawPost(start, '#5ec27a');
-    drawPost(goal, '#f0b04a');
+    drawPost(goal, '#ffcf8a');
 
     // 持ち手。輪から右下へ伸ばす
     const grip = { x: ringPos.x + 34, y: ringPos.y + 30 };

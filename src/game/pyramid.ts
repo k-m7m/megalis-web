@@ -7,7 +7,8 @@
  */
 
 import {
-  ACESFilmicToneMapping,
+  AdditiveBlending,
+  NoToneMapping,
   AmbientLight,
   BufferAttribute,
   BufferGeometry,
@@ -100,8 +101,8 @@ export class PyramidView {
 
     this.renderer = new WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.toneMapping = ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.4;
+    this.renderer.toneMapping = NoToneMapping;
+    this.renderer.toneMappingExposure = 1;
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.el.appendChild(this.renderer.domElement);
 
@@ -109,7 +110,7 @@ export class PyramidView {
 
     this.buildLights();
     this.capstone = this.buildCapstone();
-    this.capLight = new PointLight(0xffd58a, 0, 6, 2);
+    this.capLight = new PointLight(0xfcc09c, 0, 6, 2);
     this.capLight.position.set(0, HEIGHT + 0.12, 0);
     this.pivot.add(this.capLight);
     this.buildFaces();
@@ -127,13 +128,13 @@ export class PyramidView {
   // --- 組み立て ---------------------------------------------------------
 
   private buildLights(): void {
-    this.scene.add(new AmbientLight(0x7d84a6, 0.95));
+    this.scene.add(new AmbientLight(0xa89a92, 1.9));
 
-    const key = new DirectionalLight(0xffd9a0, 3.1);
-    key.position.set(2.6, 3.4, 2.2);
+    const key = new DirectionalLight(0xffe0b4, 2.4);
+    key.position.set(1.5, 2.4, 3.6);
     this.scene.add(key);
 
-    const rim = new DirectionalLight(0x88b4ff, 0.7);
+    const rim = new DirectionalLight(0x9ab4e8, 0.5);
     rim.position.set(-3, 1.2, -2.4);
     this.scene.add(rim);
 
@@ -174,7 +175,7 @@ export class PyramidView {
       const mat = new MeshStandardMaterial({
         map: colorTex,
         bumpMap: bumpTex,
-        bumpScale: 12,
+        bumpScale: 0.6,
         roughness: 0.88,
         metalness: 0.02,
       });
@@ -185,10 +186,13 @@ export class PyramidView {
       this.pivot.add(mesh);
       this.faces.push(mesh);
 
-      // 光る層。彫りの部分だけを重ねて発光させる
+      // 光る層。彫りの部分だけを重ねて発光させる。
+      // 加算で重ねること。通常合成だと、この絵の大半を占める黒が
+      // そのまま面にかぶさって全体が暗く沈む。
       const glowMat = new MeshBasicMaterial({
         map: glowTex,
         transparent: true,
+        blending: AdditiveBlending,
         opacity: 0,
         depthWrite: false,
       });
@@ -219,8 +223,8 @@ export class PyramidView {
     geo.computeVertexNormals();
 
     const mat = new MeshStandardMaterial({
-      color: new Color(0xf3d79a),
-      emissive: new Color(0xe0a94a),
+      color: new Color(0xffdcb4),
+      emissive: new Color(0xfcc09c),
       emissiveIntensity: 0.45,
       roughness: 0.25,
       metalness: 0.6,
@@ -429,7 +433,7 @@ export class PyramidView {
     for (let i = 0; i < this.glowMats.length; i += 1) {
       const front = i === this.current ? 1 : 0;
       const pulse = 0.88 + Math.sin(t / 620) * 0.12;
-      this.glowMats[i].opacity = this.pick * front * pulse * 0.7;
+      this.glowMats[i].opacity = this.pick * front * pulse * 0.42;
     }
     const capMat = this.capstone.material as MeshStandardMaterial;
     capMat.emissiveIntensity = 0.45 + this.pick * 2.6;
