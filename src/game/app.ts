@@ -11,6 +11,13 @@ import { STAGES } from './stages';
 import { DIFFICULTY_LABEL, type Difficulty, type Mode, type StageHost, type StageInstance, type StageMeta } from './types';
 import { el } from './util';
 
+/**
+ * 3D ピラミッドは three.js を伴うため、初回表示の足を引っぱらないよう
+ * 必要になったときに読み込む。型だけは先に借りておく。
+ */
+type PyramidModule = typeof import('./pyramid');
+type Pyramid = InstanceType<PyramidModule['PyramidView']>;
+
 const MAX_LIVES = 3;
 const MUTE_KEY = 'megalis:muted';
 
@@ -19,6 +26,8 @@ export class MegalisApp {
   private audio = new AudioEngine();
   private muted = false;
   private currentStage: StageInstance | null = null;
+  private pyramid: Pyramid | null = null;
+  private pyramidModule: Promise<PyramidModule> | null = null;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -30,7 +39,15 @@ export class MegalisApp {
   private clear(): void {
     this.currentStage?.dispose();
     this.currentStage = null;
+    this.pyramid?.dispose();
+    this.pyramid = null;
     this.root.innerHTML = '';
+  }
+
+  /** 3D ピラミッドの読み込み。二度目からは同じ約束を返す */
+  private loadPyramid(): Promise<PyramidModule> {
+    if (!this.pyramidModule) this.pyramidModule = import('./pyramid');
+    return this.pyramidModule;
   }
 
   private unlockAudioOnFirstInput(): void {
@@ -105,6 +122,8 @@ export class MegalisApp {
   // ------------------------------------------------------------------
   private showModeSelect(): void {
     this.clear();
+    // どちらのモードでもこの先で使うので、ここから読み込みを始めておく
+    void this.loadPyramid();
     const view = el('div', 'mg-view mg-select-view');
     view.innerHTML = `<h2 class="mg-view-title">モードを選べ</h2>`;
 
@@ -192,28 +211,60 @@ export class MegalisApp {
   // ------------------------------------------------------------------
   // フリーモード：ステージ選択
   // ------------------------------------------------------------------
-  private showStageSelect(): void {
+  private async showStageSelect(): Promise<void> {
     this.clear();
-    const view = el('div', 'mg-view mg-select-view');
+    const view = el('div', 'mg-view mg-select-view mg-select-view--pyramid');
     view.innerHTML = `<h2 class="mg-view-title">挑む試練を選べ</h2>`;
-
-    const cards = el('div', 'mg-card-list');
-    for (const stage of STAGES) {
-      const card = el('button', 'mg-card mg-card--stage');
-      card.type = 'button';
-      card.innerHTML = `
-        <span class="mg-card-eyebrow">第${stage.no}の試練 ・ ${stage.kind}</span>
-        <span class="mg-card-title">${stage.title}</span>
-        <span class="mg-card-desc">${stage.brief}</span>`;
-      card.addEventListener('click', () => {
-        this.audio.uiClick();
-        this.showDifficultySelect('free', stage);
-      });
-      cards.append(card);
-    }
-    view.append(cards);
-    view.append(this.backButton(() => this.showModeSelect()));
+    const loading = el('p', 'mg-hint-line', 'ピラミッドを組み上げている…');
+    view.append(loading);
     this.root.append(view);
+
+    const { PyramidView } = await this.loadPyramid();
+    // 読み込んでいる間に別の画面へ移っていたら何もしない
+    if (!view.isConnected) return;
+    loading.remove();
+
+    const plaque = el('div', 'mg-plaque');
+    const enterBtn = el('button', 'mg-btn mg-btn--primary', 'この試練に挑む');
+    enterBtn.type = 'button';
+
+    const renderPlaque = (index: number) => {
+      const stage = STAGES[index];
+      plaque.innerHTML = `
+        <span class="mg-plaque-eyebrow">第${stage.no}の試練 ・ ${stage.kind}</span>
+        <span class="mg-plaque-title">${stage.title}</span>
+        <span class="mg-plaque-desc">${stage.brief}</span>`;
+    };
+
+    const pyramid = new PyramidView({
+      onFaceChange: (index) => {
+        renderPlaque(index);
+        this.audio.dialClick();
+      },
+      onPick: () => enter(),
+    });
+    this.pyramid = pyramid;
+
+    const enter = () => {
+      if (!pyramid) return;
+      pyramid.setInteractive(false);
+      pyramid.setPicked(true);
+      this.audio.stageClear();
+      const stage = STAGES[pyramid.getFace()];
+      pyramid.setZoom(0.62);
+      view.classList.add('mg-select-view--entering');
+      window.setTimeout(() => this.showDifficultySelect('free', stage), 900);
+    };
+    enterBtn.addEventListener('click', enter);
+
+    renderPlaque(pyramid.getFace());
+    pyramid.setPicked(true);
+
+    view.append(pyramid.el, plaque, enterBtn);
+    view.append(
+      el('p', 'mg-hint-line', 'ピラミッドを指で回して、挑む面を正面に向けろ'),
+    );
+    view.append(this.backButton(() => this.showModeSelect()));
   }
 
   // ------------------------------------------------------------------
@@ -333,33 +384,115 @@ export class MegalisApp {
         this.showAdventureEnd(false, i + 1, difficulty);
         return;
       }
+
       this.audio.stageClear();
-      await this.showStageClearInterstitial(stage, i === STAGES.length - 1);
+      const isLast = i === STAGES.length - 1;
+      await this.showPyramidTransition(stage, isLast ? null : STAGES[i + 1]);
     }
     this.audio.fanfare();
     this.showAdventureEnd(true, STAGES.length, difficulty);
   }
 
-  private showStageClearInterstitial(stage: StageMeta, isLast: boolean): Promise<void> {
+  /**
+   * 試練を越えたあとの幕間。
+   *
+   * 画面が引いてピラミッドが現れ、勢いよく回って次の面が正面に来る。
+   * 回り終わったら彫りが灯り、寄って次の試練へ入る。
+   */
+  private async showPyramidTransition(
+    cleared: StageMeta,
+    next: StageMeta | null,
+  ): Promise<void> {
     this.clear();
-    const view = el('div', 'mg-view mg-result-view mg-result-view--interstitial');
-    view.innerHTML = `
-      <h2 class="mg-view-title mg-result-clear">突破！</h2>
-      <p>「${stage.title}」を封じていた仕掛けが崩れ落ちた。</p>
-    `;
-    const nextBtn = el(
-      'button',
-      'mg-btn mg-btn--primary',
-      isLast ? '最奥へ進む' : '次の試練へ',
-    );
-    nextBtn.type = 'button';
-    view.append(nextBtn);
+    const { PyramidView } = await this.loadPyramid();
+    const view = el('div', 'mg-view mg-transition-view');
+
+    const caption = el('div', 'mg-transition-caption');
+    caption.innerHTML = `
+      <span class="mg-transition-cleared">「${cleared.title}」を突破</span>
+      <span class="mg-transition-next"></span>`;
+    const nextEl = caption.querySelector('.mg-transition-next') as HTMLElement;
+
+    const pyramid = new PyramidView();
+    this.pyramid = pyramid;
+    pyramid.setInteractive(false);
+    pyramid.snapTo(cleared.no - 1);
+    pyramid.setPicked(true);
+    // まずは寄った状態から始めて、そこから引く
+    pyramid.setZoom(0.55);
+
+    const skip = el('button', 'mg-btn mg-btn--ghost', '見送る');
+    skip.type = 'button';
+
+    view.append(pyramid.el, caption, skip);
     this.root.append(view);
-    return new Promise((resolve) => {
-      nextBtn.addEventListener('click', () => {
-        this.audio.uiClick();
+
+    return new Promise<void>((resolve) => {
+      const timers: number[] = [];
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        for (const t of timers) window.clearTimeout(t);
         resolve();
+      };
+      skip.addEventListener('click', () => {
+        this.audio.uiClick();
+        finish();
       });
+
+      // 演出のどこかで止まっても冒険が止まらないよう、全体にも上限を置く
+      timers.push(window.setTimeout(finish, 9000));
+
+      // 1. 画面が引いてピラミッド全体が見える
+      timers.push(
+        window.setTimeout(() => {
+          pyramid.setPicked(false);
+          pyramid.setZoom(1.25);
+          view.classList.add('is-pulled-back');
+        }, 420),
+      );
+
+      if (!next) {
+        // 最後の試練のあとは、そのまま最奥へ
+        nextEl.textContent = '迷宮の最奥へ';
+        timers.push(
+          window.setTimeout(() => {
+            pyramid.setPicked(true);
+            pyramid.setZoom(0.5);
+            this.audio.correct();
+          }, 1500),
+        );
+        timers.push(window.setTimeout(finish, 2600));
+        return;
+      }
+
+      // 2. 勢いをつけて次の面まで回す。慣性で行き過ぎてから吸い付く
+      timers.push(
+        window.setTimeout(() => {
+          this.audio.launch();
+          pyramid.spinTo(next.no - 1, 1);
+        }, 1250),
+      );
+
+      // 3. 回り終わったら彫りが灯り、寄って次へ
+      timers.push(
+        window.setTimeout(() => {
+          void pyramid.waitSettled().then(() => {
+            if (done) return;
+            nextEl.textContent = `次は「${next.title}」`;
+            pyramid.setPicked(true);
+            this.audio.stoneGlow();
+            timers.push(
+              window.setTimeout(() => {
+                pyramid.setZoom(0.55);
+                this.audio.correct();
+              }, 700),
+            );
+            timers.push(window.setTimeout(finish, 1700));
+          });
+        }, 1400),
+      );
     });
   }
 

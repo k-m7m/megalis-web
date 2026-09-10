@@ -888,3 +888,123 @@ h3 {
     width: min(220px, 72vw);
   }
 }
+
+/* -------------------------------------------------------------------- */
+/* ステージ選択の 3D ピラミッド                                          */
+/* -------------------------------------------------------------------- */
+
+.mg-pyramid3d {
+  width: 100%;
+  max-width: 340px;
+  aspect-ratio: 1 / 1;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.5));
+}
+
+.mg-pyramid3d.is-dragging {
+  cursor: grabbing;
+}
+
+.mg-pyramid3d.is-locked {
+  cursor: default;
+}
+
+.mg-pyramid3d canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* 正面の面を説明する銘板 */
+.mg-plaque {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 5.4rem;
+  padding: 0.8rem 1rem;
+  border-radius: var(--mg-radius);
+  border: 1px solid var(--mg-panel-border);
+  background: var(--mg-panel);
+  width: 100%;
+  max-width: 340px;
+}
+
+.mg-plaque-eyebrow {
+  font-size: 0.72rem;
+  color: var(--mg-gold);
+  letter-spacing: 0.08em;
+}
+
+.mg-plaque-title {
+  font-family: var(--mg-font-heading);
+  font-size: 1.2rem;
+  color: var(--mg-gold-soft);
+}
+
+.mg-plaque-desc {
+  font-size: 0.82rem;
+  color: var(--mg-text-muted);
+  text-align: center;
+}
+
+.mg-hint-line {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--mg-text-muted);
+}
+
+.mg-select-view--pyramid {
+  gap: 0.9rem;
+}
+
+/* 試練へ入るときは、銘板と操作を先に引かせて画面を空ける */
+.mg-select-view--entering .mg-plaque,
+.mg-select-view--entering .mg-btn,
+.mg-select-view--entering .mg-hint-line,
+.mg-select-view--entering .mg-view-title {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+  pointer-events: none;
+}
+
+/* -------------------------------------------------------------------- */
+/* 試練のあいだの幕間                                                    */
+/* -------------------------------------------------------------------- */
+
+.mg-transition-view {
+  gap: 1rem;
+}
+
+.mg-transition-caption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 3.6rem;
+}
+
+.mg-transition-cleared {
+  font-family: var(--mg-font-heading);
+  font-size: 1.15rem;
+  color: var(--mg-good);
+}
+
+.mg-transition-next {
+  font-size: 0.95rem;
+  color: var(--mg-gold-soft);
+  min-height: 1.4em;
+  opacity: 0;
+  animation: mg-fade-in 0.6s ease forwards;
+}
+
+.mg-transition-view.is-pulled-back .mg-transition-next {
+  animation: mg-fade-in 0.6s ease 0.2s forwards;
+}
+
+@keyframes mg-fade-in {
+  to { opacity: 1; }
+}
