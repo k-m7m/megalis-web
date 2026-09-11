@@ -37,10 +37,14 @@ interface Params {
 }
 
 const PARAMS: Record<string, Params> = {
-  easy: { timeLimit: 50, clearance: 10, bends: 6, penaltyFreeze: 500 },
-  normal: { timeLimit: 40, clearance: 7, bends: 8, penaltyFreeze: 400 },
-  hard: { timeLimit: 32, clearance: 5, bends: 10, penaltyFreeze: 300 },
+  easy: { timeLimit: 60, clearance: 14, bends: 5, penaltyFreeze: 900 },
+  normal: { timeLimit: 48, clearance: 10, bends: 7, penaltyFreeze: 750 },
+  hard: { timeLimit: 38, clearance: 7, bends: 9, penaltyFreeze: 600 },
 };
+
+/** 虫眼鏡の半径（盤の座標）と倍率 */
+const LENS_R = 42;
+const LENS_ZOOM = 2.4;
 
 interface Point {
   x: number;
@@ -154,12 +158,25 @@ export const createStage4: StageFactory = (
   const hint = el(
     'p',
     'mg-launch-hint',
-    '緑の柱の輪を押さえ、針金に触れずに反対の柱まで滑らせろ',
+    '緑の柱の輪を押さえたまま動かす。押さえている間は手元が虫眼鏡で拡大される',
   );
   wrap.append(canvasWrap, hint);
   root.appendChild(wrap);
 
   const ctx = fitCanvas(canvas, W, H);
+
+  // 虫眼鏡で拡大するため、場面はいったん裏の画布に描いてから転送する
+  // 虫眼鏡で引き伸ばしてもぼやけないよう、裏の画布は倍率ぶん細かく持つ
+  const dpr = Math.min(window.devicePixelRatio || 1, 2) * LENS_ZOOM;
+  const scene = document.createElement('canvas');
+  scene.width = Math.round(W * dpr);
+  scene.height = Math.round(H * dpr);
+  const sceneCtx = scene.getContext('2d');
+  if (!sceneCtx) throw new Error('2d context is unavailable');
+  const g: CanvasRenderingContext2D = sceneCtx;
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  /** 指で操作しているときは、輪が指の下に隠れるので虫眼鏡を遠くに置く */
+  let lensLift = 74;
 
   // --- 針金を折れ線として持ち、始点からの距離を引けるようにする ----------
   const rawCorners = buildWire(params.bends);
@@ -249,6 +266,7 @@ export const createStage4: StageFactory = (
     // 輪のある場所を握る。離れた場所からは握れない
     if (Math.hypot(p.x - ringPos.x, p.y - ringPos.y) > REGRAB_DIST) return;
     holding = true;
+    lensLift = e.pointerType === 'mouse' ? 66 : 86;
     canvas.setPointerCapture(e.pointerId);
     host.setStatus('針金に触れずに滑らせろ。');
   }
@@ -348,106 +366,161 @@ export const createStage4: StageFactory = (
 
   // --- 描画 -------------------------------------------------------------
   function drawPost(p: Point, color: string): void {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
+    g.fillStyle = color;
+    g.beginPath();
+    g.arc(p.x, p.y, 7, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = 'rgba(0,0,0,0.45)';
+    g.lineWidth = 1.5;
+    g.stroke();
   }
 
   function draw(): void {
-    ctx.save();
+    g.save();
     if (shake > 0) {
-      ctx.translate((Math.random() * 2 - 1) * 3 * shake, (Math.random() * 2 - 1) * 3 * shake);
+      g.translate((Math.random() * 2 - 1) * 3 * shake, (Math.random() * 2 - 1) * 3 * shake);
     }
 
-    ctx.clearRect(-8, -8, W + 16, H + 16);
+    g.clearRect(-8, -8, W + 16, H + 16);
 
     // 台座。実機の斜面は目地の無い平らな砂岩なので、横線は引かない
-    ctx.fillStyle = '#c08a3e';
-    ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = 'rgba(255, 226, 168, 0.25)';
-    ctx.lineWidth = 8;
-    ctx.strokeRect(6, 6, W - 12, H - 12);
-    ctx.strokeStyle = 'rgba(96, 58, 10, 0.28)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(12, 12, W - 24, H - 24);
+    g.fillStyle = '#c08a3e';
+    g.fillRect(0, 0, W, H);
+    g.strokeStyle = 'rgba(255, 226, 168, 0.25)';
+    g.lineWidth = 8;
+    g.strokeRect(6, 6, W - 12, H - 12);
+    g.strokeStyle = 'rgba(96, 58, 10, 0.28)';
+    g.lineWidth = 2;
+    g.strokeRect(12, 12, W - 24, H - 24);
 
     const tracePath = (): void => {
-      ctx.beginPath();
-      ctx.moveTo(corners[0].x, corners[0].y);
-      for (let i = 1; i < corners.length; i += 1) ctx.lineTo(corners[i].x, corners[i].y);
+      g.beginPath();
+      g.moveTo(corners[0].x, corners[0].y);
+      for (let i = 1; i < corners.length; i += 1) g.lineTo(corners[i].x, corners[i].y);
     };
 
     // 針金。実機は黒い丸棒が素地から浮いていて、落ち影が出る
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.save();
-    ctx.translate(3, 4);
-    ctx.strokeStyle = 'rgba(70, 40, 6, 0.38)';
-    ctx.lineWidth = WIRE_R * 2 + 2;
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    g.save();
+    g.translate(3, 4);
+    g.strokeStyle = 'rgba(70, 40, 6, 0.38)';
+    g.lineWidth = WIRE_R * 2 + 2;
     tracePath();
-    ctx.stroke();
-    ctx.restore();
+    g.stroke();
+    g.restore();
 
-    ctx.strokeStyle = '#0c0c0c';
-    ctx.lineWidth = WIRE_R * 2 + 2;
+    g.strokeStyle = '#0c0c0c';
+    g.lineWidth = WIRE_R * 2 + 2;
     tracePath();
-    ctx.stroke();
+    g.stroke();
 
     // 棒の上側の光。丸みを出す
-    ctx.save();
-    ctx.translate(-0.8, -1.2);
-    ctx.strokeStyle = 'rgba(160, 160, 168, 0.55)';
-    ctx.lineWidth = Math.max(1.2, WIRE_R * 0.8);
+    g.save();
+    g.translate(-0.8, -1.2);
+    g.strokeStyle = 'rgba(160, 160, 168, 0.55)';
+    g.lineWidth = Math.max(1.2, WIRE_R * 0.8);
     tracePath();
-    ctx.stroke();
-    ctx.restore();
+    g.stroke();
+    g.restore();
 
     drawPost(start, '#5ec27a');
     drawPost(goal, '#ffcf8a');
 
     // 持ち手。輪から右下へ伸ばす
     const grip = { x: ringPos.x + 34, y: ringPos.y + 30 };
-    ctx.strokeStyle = '#d8d2c4';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(ringPos.x, ringPos.y);
-    ctx.lineTo(grip.x, grip.y);
-    ctx.stroke();
+    g.strokeStyle = '#d8d2c4';
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(ringPos.x, ringPos.y);
+    g.lineTo(grip.x, grip.y);
+    g.stroke();
 
-    ctx.strokeStyle = touching ? '#f07d7d' : '#7d63c8';
-    ctx.lineWidth = 9;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(grip.x, grip.y);
-    ctx.lineTo(grip.x + 22, grip.y + 19);
-    ctx.stroke();
+    g.strokeStyle = touching ? '#f07d7d' : '#7d63c8';
+    g.lineWidth = 9;
+    g.lineCap = 'round';
+    g.beginPath();
+    g.moveTo(grip.x, grip.y);
+    g.lineTo(grip.x + 22, grip.y + 19);
+    g.stroke();
 
     // 輪。針金がこの中を通る
-    ctx.strokeStyle = touching ? '#f07d7d' : '#e8e2d4';
-    ctx.lineWidth = RING_LINE;
-    ctx.beginPath();
-    ctx.arc(ringPos.x, ringPos.y, ringInner, 0, Math.PI * 2);
-    ctx.stroke();
+    g.strokeStyle = touching ? '#f07d7d' : '#e8e2d4';
+    g.lineWidth = RING_LINE;
+    g.beginPath();
+    g.arc(ringPos.x, ringPos.y, ringInner, 0, Math.PI * 2);
+    g.stroke();
     if (touching) {
-      ctx.strokeStyle = 'rgba(240,125,125,0.35)';
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.arc(ringPos.x, ringPos.y, ringInner + 3, 0, Math.PI * 2);
-      ctx.stroke();
+      g.strokeStyle = 'rgba(240,125,125,0.35)';
+      g.lineWidth = 6;
+      g.beginPath();
+      g.arc(ringPos.x, ringPos.y, ringInner + 3, 0, Math.PI * 2);
+      g.stroke();
     }
 
     if (!holding && !cleared) {
-      ctx.fillStyle = 'rgba(244,241,232,0.9)';
-      ctx.font = '12px "Noto Sans JP", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('輪を押さえて動かす', ringPos.x, ringPos.y - ringInner - 10);
+      g.fillStyle = 'rgba(244,241,232,0.9)';
+      g.font = '12px "Noto Sans JP", sans-serif';
+      g.textAlign = 'center';
+      g.fillText('輪を押さえて動かす', ringPos.x, ringPos.y - ringInner - 10);
     }
 
+    g.restore();
+
+    // 画面へ転送し、そのうえに虫眼鏡を重ねる
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(scene, 0, 0, W, H);
+    drawLens();
+  }
+
+  /**
+   * 虫眼鏡。輪のまわりを拡大して、輪の少し上（上が狭ければ下）に出す。
+   * 指で操作すると輪が指に隠れるので、指から離れた位置に置いている。
+   */
+  function drawLens(): void {
+    if (!holding || cleared) return;
+    const lx = clamp(ringPos.x, LENS_R + 4, W - LENS_R - 4);
+    let ly = ringPos.y - lensLift;
+    if (ly - LENS_R < 4) ly = ringPos.y + lensLift;
+    ly = clamp(ly, LENS_R + 4, H - LENS_R - 4);
+    const half = LENS_R / LENS_ZOOM;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(lx, ly, LENS_R, 0, Math.PI * 2);
+    ctx.clip();
+    // 盤の外まで拡大したときに透けないよう、素地で埋めておく
+    ctx.fillStyle = '#c08a3e';
+    ctx.fillRect(lx - LENS_R, ly - LENS_R, LENS_R * 2, LENS_R * 2);
+    ctx.drawImage(
+      scene,
+      (ringPos.x - half) * dpr,
+      (ringPos.y - half) * dpr,
+      half * 2 * dpr,
+      half * 2 * dpr,
+      lx - LENS_R,
+      ly - LENS_R,
+      LENS_R * 2,
+      LENS_R * 2,
+    );
     ctx.restore();
+
+    // レンズの縁
+    ctx.strokeStyle = 'rgba(20, 12, 4, 0.55)';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(lx, ly, LENS_R + 1, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#e0a94a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(lx, ly, LENS_R, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255, 236, 190, 0.5)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(lx, ly, LENS_R - 3, Math.PI * 1.1, Math.PI * 1.75);
+    ctx.stroke();
   }
 
   function loop(t: number): void {
