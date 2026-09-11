@@ -31,8 +31,12 @@ import { buildFaceArt } from './faceTextures';
 
 /** 底面の一辺の半分 */
 const HALF = 1.0;
-/** 頂点までの高さ */
-const HEIGHT = 1.15;
+/**
+ * 頂点までの高さ。
+ * 実機は底辺の 0.6 倍ほどの高さで、見上げると頂角が 80 度ほどに開く。
+ * 画面での見え方は見下ろす角度でも変わるので、実際に描いて測って決めた。
+ */
+const HEIGHT = 0.96;
 /** 面の数 */
 export const FACE_COUNT = 4;
 
@@ -229,12 +233,16 @@ export class PyramidView {
     const capH = 0.24;
 
     // 台座。頂点の少し下に挟む平らな襟
-    const collar = new Mesh(
-      new BoxGeometry(capBase * 1.25, 0.05, capBase * 1.25),
-      new MeshStandardMaterial({ color: new Color(0xb07c38), roughness: 0.8 }),
-    );
-    collar.position.y = collarY;
+    const collarMat = new MeshStandardMaterial({
+      color: new Color(0xd0913f),
+      roughness: 0.7,
+    });
+    const collar = new Mesh(new BoxGeometry(capBase * 1.4, 0.035, capBase * 1.4), collarMat);
+    collar.position.y = collarY - 0.018;
     this.pivot.add(collar);
+    const collar2 = new Mesh(new BoxGeometry(capBase * 1.15, 0.035, capBase * 1.15), collarMat);
+    collar2.position.y = collarY + 0.016;
+    this.pivot.add(collar2);
 
     const capGeo = (half: number, h: number, y0: number) => {
       const geo = new BufferGeometry();
@@ -253,8 +261,20 @@ export class PyramidView {
     };
 
     // 内側の芯。ここが光る
+    // 内部の銀の反射板
+    const reflector = new Mesh(
+      capGeo(capBase * 0.3, capH * 0.42, collarY + 0.03),
+      new MeshStandardMaterial({
+        color: new Color(0xd6d6da),
+        roughness: 0.12,
+        metalness: 0.95,
+      }),
+    );
+    this.pivot.add(reflector);
+
+    // 発光体
     const core = new Mesh(
-      capGeo(capBase * 0.42, capH * 0.7, collarY + 0.03),
+      capGeo(capBase * 0.2, capH * 0.26, collarY + 0.035),
       new MeshBasicMaterial({ color: new Color(0xffb066) }),
     );
     this.pivot.add(core);
@@ -263,11 +283,12 @@ export class PyramidView {
     const shell = new Mesh(
       capGeo(capBase / 2, capH, collarY + 0.02),
       new MeshStandardMaterial({
-        color: new Color(0xd8c8b0),
+        // 実機はほぼ無色のクリア樹脂。中の反射板が透けて見える
+        color: new Color(0xeae6de),
         transparent: true,
-        opacity: 0.48,
-        roughness: 0.18,
-        metalness: 0.1,
+        opacity: 0.22,
+        roughness: 0.04,
+        metalness: 0.05,
       }),
     );
     this.pivot.add(shell);
@@ -495,7 +516,7 @@ export class PyramidView {
     this.zoom += (this.zoomTarget - this.zoom) * k;
     this.lift += (this.liftTarget - this.lift) * k;
     const dist = 3.5 * this.zoom;
-    this.camera.position.set(0, 1.5 * this.lift + 0.35, dist);
+    this.camera.position.set(0, 1.05 * this.lift + 0.28, dist);
     this.camera.lookAt(0, HEIGHT * 0.42, 0);
 
     // 選択の演出。正面の面だけ彫りが灯り、冠石が強く光る

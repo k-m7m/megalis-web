@@ -18,14 +18,18 @@ const SIZE = 512;
 /** 実機の写真から採った色 */
 const C = {
   /** 本体。金寄りのタン */
-  body: '#c89848',
+  body: '#d0913f',
   bodyLit: '#e0b86a',
   bodyHi: '#f0d49a',
   bodyDark: '#8a5e1c',
   seam: 'rgba(96, 58, 10, 0.5)',
   edgeLit: 'rgba(255, 226, 168, 0.34)',
-  /** 円盤と操作パネルの青 */
-  blue: '#283888',
+  /** 円盤の青。実機は明るめのロイヤルブルー */
+  blue: '#2f3f9e',
+  /** 円盤に並ぶ金の文字 */
+  gold: '#c9a227',
+  /** 銘板の銀 */
+  silver: '#c8ccd4',
   blueLit: '#4a5cb8',
   blueDark: '#16215c',
   /** つまみ。実機はサーモン寄りのタン */
@@ -40,15 +44,15 @@ const C = {
   /** 紫の持ち手 */
   handle: '#5a4ab0',
   /** 光る板 */
-  lampOff: '#93a5a8',
-  /** 操作ボタンの紫 */
-  button: '#4a3f96',
+  lampOff: '#cfc4b0',
+  /** 操作ボタン。実機は濃紺 */
+  button: '#3b3ba8',
   /** 銘板の濃い青 */
   plateBlue: '#1b2890',
   /** 液晶のアンバー */
   lcd: '#c8a24a',
-  /** 祭室の奥 */
-  chamber: '#3a2c14',
+  /** 祭室の奥。実機は暗い穴ではなく明るい */
+  chamber: '#e0b374',
 };
 
 export interface FaceArt {
@@ -98,52 +102,62 @@ function roundRect(ctx: Ctx, x: number, y: number, w: number, h: number, r: numb
 
 // --- 地肌 ---------------------------------------------------------------
 
-/** 成形されたプラスチックの段。実機は面いっぱいに横の段が入っている */
+/**
+ * 地肌。
+ *
+ * 実機の斜面は無地に近い。装飾は外周を一周する額縁の帯と、
+ * 左下の階段状のブロックだけ。
+ * 横の目地を並べると「レンガのピラミッド」に見えてしまうので入れない。
+ */
 function drawBody(ctx: Ctx): void {
   ctx.fillStyle = C.body;
   ctx.fillRect(0, 0, SIZE, SIZE);
 
   const grad = ctx.createLinearGradient(0, 0, 0, SIZE);
-  grad.addColorStop(0, 'rgba(255, 232, 186, 0.22)');
-  grad.addColorStop(0.55, 'rgba(0, 0, 0, 0)');
-  grad.addColorStop(1, 'rgba(90, 54, 8, 0.18)');
+  grad.addColorStop(0, 'rgba(255, 236, 196, 0.16)');
+  grad.addColorStop(0.62, 'rgba(0, 0, 0, 0)');
+  grad.addColorStop(1, 'rgba(96, 58, 10, 0.12)');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, SIZE, SIZE);
 
-  const courses = 20;
-  for (let i = 1; i < courses; i += 1) {
-    const y = (i / courses) * SIZE;
-    ctx.strokeStyle = C.seam;
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(SIZE, y);
-    ctx.stroke();
-    ctx.strokeStyle = C.edgeLit;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(0, y + 3.5);
-    ctx.lineTo(SIZE, y + 3.5);
-    ctx.stroke();
+  ctx.save();
+  faceTriangle(ctx);
+  ctx.clip();
 
-    // 石の継ぎ目。段ごとにずらす
-    const { left, right } = edgesAt(y);
-    const blocks = 3 + Math.round(i * 0.6);
-    for (let b = 1; b < blocks; b += 1) {
-      const x = left + ((right - left) * b) / blocks + (i % 2 ? 10 : 0);
-      ctx.strokeStyle = 'rgba(96, 58, 10, 0.32)';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x, y - SIZE / courses + 4);
-      ctx.stroke();
-    }
+  // 外周を一周する額縁の帯。立ち上がりに光、内側に影
+  const frame = (inset: number, color: string, width: number) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(SIZE / 2, inset * 1.9);
+    ctx.lineTo(SIZE - inset, SIZE - inset);
+    ctx.lineTo(inset, SIZE - inset);
+    ctx.closePath();
+    ctx.stroke();
+  };
+  frame(30, C.edgeLit, 14);
+  frame(34, 'rgba(96, 58, 10, 0.34)', 4);
+  frame(44, 'rgba(96, 58, 10, 0.18)', 2);
+
+  // 左下の階段状のブロック。実機で段が見えるのはここだけ
+  const bw = SIZE * 0.15;
+  const bx = 54;
+  const by = SIZE - 44;
+  for (let i = 0; i < 5; i += 1) {
+    const h = 13;
+    const w = bw - i * (bw / 6);
+    ctx.fillStyle = 'rgba(96, 58, 10, 0.3)';
+    ctx.fillRect(bx, by - i * h, w, h);
+    ctx.fillStyle = C.edgeLit;
+    ctx.fillRect(bx, by - i * h, w, 2.5);
   }
+
+  ctx.restore();
 
   const img = ctx.getImageData(0, 0, SIZE, SIZE);
   const d = img.data;
   for (let i = 0; i < d.length; i += 4) {
-    const n = (Math.random() - 0.5) * 16;
+    const n = (Math.random() - 0.5) * 10;
     d[i] += n;
     d[i + 1] += n;
     d[i + 2] += n;
@@ -151,21 +165,27 @@ function drawBody(ctx: Ctx): void {
   ctx.putImageData(img, 0, 0);
 }
 
-/** 斜辺に沿った柱の飾り。実機の縁は縦筋の入った柱になっている */
+/** 斜辺に沿った浅い縦筋。段差ではなく線彫りにとどめる */
 function drawEdgePilasters(ctx: Ctx, dark: string, lit: string): void {
   ctx.save();
   faceTriangle(ctx);
   ctx.clip();
-  for (let i = 0; i < 7; i += 1) {
-    const y = 180 + i * 48;
+  for (let i = 0; i < 9; i += 1) {
+    const y = 150 + i * 38;
     const { left, right } = edgesAt(y);
-    for (const x of [left + 22, right - 22]) {
-      ctx.fillStyle = dark;
-      ctx.fillRect(x - 13, y, 26, 40);
-      ctx.fillStyle = lit;
-      ctx.fillRect(x - 9, y + 4, 4, 32);
-      ctx.fillRect(x - 1, y + 4, 4, 32);
-      ctx.fillRect(x + 7, y + 4, 4, 32);
+    for (const x of [left + 16, right - 16]) {
+      ctx.strokeStyle = dark;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y + 24);
+      ctx.stroke();
+      ctx.strokeStyle = lit;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x + 2.5, y);
+      ctx.lineTo(x + 2.5, y + 24);
+      ctx.stroke();
     }
   }
   ctx.restore();
@@ -199,8 +219,9 @@ function drawControlPanel(ctx: Ctx, lit: boolean, ink: string): void {
   const pw = 180;
   const px = SIZE / 2 - pw / 2;
   const g = ctx.createLinearGradient(0, 210, 0, 246);
-  g.addColorStop(0, lit ? '#000' : '#5a6ec0');
-  g.addColorStop(1, lit ? '#000' : C.plateBlue);
+  g.addColorStop(0, lit ? '#000' : '#eef1f6');
+  g.addColorStop(0.5, lit ? '#000' : C.silver);
+  g.addColorStop(1, lit ? '#000' : '#8f96a4');
   ctx.fillStyle = g;
   ctx.beginPath();
   ctx.moveTo(px + 8, 210);
@@ -210,8 +231,8 @@ function drawControlPanel(ctx: Ctx, lit: boolean, ink: string): void {
   ctx.closePath();
   ctx.fill();
   // 銘板の文字の帯
-  ctx.fillStyle = lit ? '#000' : '#e8eef8';
-  ctx.fillRect(px + 22, 222, pw - 44, 5);
+  ctx.fillStyle = lit ? '#000' : C.plateBlue;
+  ctx.fillRect(px + 22, 221, pw - 44, 6);
   ctx.fillRect(px + 34, 232, pw - 68, 4);
   void ink;
 }
@@ -281,46 +302,74 @@ function faceDial(ctx: Ctx, ink: string, lit: boolean): void {
     // 立ち姿
     (x, y, k) => { ctx.beginPath(); ctx.arc(x, y - 7*k, 3*k, 0, Math.PI*2); ctx.fill(); ctx.fillRect(x - 3*k, y - 3*k, 6*k, 8*k); ctx.fillRect(x - 3*k, y + 5*k, 2.5*k, 6*k); ctx.fillRect(x + 0.5*k, y + 5*k, 2.5*k, 6*k); },
   ];
-  for (let i = 0; i < 8; i += 1) {
-    const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
-    const gx = cx + Math.cos(a) * r * 0.72;
-    const gy = cy + Math.sin(a) * r * 0.72;
-    // 彫りは暗い青。灯すときだけ ink にする
-    ctx.fillStyle = lit ? ink : C.blueDark;
-    glyphs[i % glyphs.length](gx, gy, 1);
+  // 外周に 16 個、内側に 8 個。実機は金の文字がぎっしり並ぶ
+  for (let i = 0; i < 16; i += 1) {
+    const a = (i / 16) * Math.PI * 2 - Math.PI / 2;
+    ctx.fillStyle = lit ? ink : C.gold;
+    glyphs[i % glyphs.length](
+      cx + Math.cos(a) * r * 0.84,
+      cy + Math.sin(a) * r * 0.84,
+      0.62,
+    );
   }
-
-  // 中心の円筒つまみ。手前に出ているので下側に影を敷く
-  ctx.fillStyle = lit ? '#000' : 'rgba(0,0,0,0.35)';
+  for (let i = 0; i < 8; i += 1) {
+    const a = (i / 8) * Math.PI * 2 - Math.PI / 2 + 0.2;
+    ctx.fillStyle = lit ? ink : C.gold;
+    glyphs[(i + 1) % glyphs.length](
+      cx + Math.cos(a) * r * 0.58,
+      cy + Math.sin(a) * r * 0.58,
+      0.9,
+    );
+  }
+  // 円盤外周の金の細リング
+  ctx.strokeStyle = lit ? '#000' : C.gold;
+  ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.ellipse(cx, cy + 8, 56, 52, 0, 0, Math.PI * 2);
+  ctx.arc(cx, cy, r - 5, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 中心の円筒つまみ。
+  // 実機は円盤の 1/3 ほどの径で、径の半分ぐらい手前に突き出ている。
+  // 溝は側面だけに入れること。上面まで伸ばすと目盛りに見えてしまう。
+  const kr = r * 0.33;
+  const lift = kr * 0.45;
+
+  // 落ち影
+  ctx.fillStyle = lit ? '#000' : 'rgba(0,0,0,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(cx + 4, cy + lift + 6, kr * 1.06, kr * 0.96, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  // 側面。下へずらした円で厚みを出す
   ctx.fillStyle = lit ? '#000' : C.knobSide;
   ctx.beginPath();
-  ctx.arc(cx, cy + 4, 52, 0, Math.PI * 2);
+  ctx.arc(cx, cy + lift, kr, 0, Math.PI * 2);
   ctx.fill();
+  ctx.fillRect(cx - kr, cy, kr * 2, lift);
+
+  // 側面の縦フルート。上面にはかからない
+  ctx.strokeStyle = lit ? '#000' : 'rgba(110, 58, 20, 0.5)';
+  ctx.lineWidth = 2.5;
+  for (let i = 0; i < 22; i += 1) {
+    const a = (i / 22) * Math.PI * 2;
+    const x = cx + Math.cos(a) * kr * 0.97;
+    if (Math.sin(a) < -0.2) continue; // 裏側は見えない
+    ctx.beginPath();
+    ctx.moveTo(x, cy + Math.sin(a) * kr * 0.12);
+    ctx.lineTo(x, cy + lift + Math.sin(a) * kr * 0.12);
+    ctx.stroke();
+  }
+
+  // 上面
   ctx.fillStyle = lit ? '#000' : C.knobTop;
   ctx.beginPath();
-  ctx.arc(cx, cy, 50, 0, Math.PI * 2);
+  ctx.arc(cx, cy, kr, 0, Math.PI * 2);
   ctx.fill();
-  // 側面の縦溝
-  ctx.strokeStyle = lit ? '#000' : 'rgba(120, 66, 20, 0.45)';
-  ctx.lineWidth = 3;
-  for (let i = 0; i < 20; i += 1) {
-    const a = (i / 20) * Math.PI * 2;
-    ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(a) * 41, cy + Math.sin(a) * 41);
-    ctx.lineTo(cx + Math.cos(a) * 50, cy + Math.sin(a) * 50);
-    ctx.stroke();
-  }
-  // 上面の同心円
-  ctx.strokeStyle = lit ? '#000' : 'rgba(120, 66, 20, 0.3)';
+  ctx.strokeStyle = lit ? '#000' : 'rgba(110, 58, 20, 0.28)';
   ctx.lineWidth = 2;
-  for (const rr of [16, 27, 36]) {
-    ctx.beginPath();
-    ctx.arc(cx, cy, rr, 0, Math.PI * 2);
-    ctx.stroke();
-  }
+  ctx.beginPath();
+  ctx.arc(cx, cy, kr * 0.55, 0, Math.PI * 2);
+  ctx.stroke();
 
   // 12 時の指標
   ctx.fillStyle = ink;
@@ -332,72 +381,89 @@ function faceDial(ctx: Ctx, ink: string, lit: boolean): void {
   ctx.fill();
 }
 
-/** 面2 大蛇の回廊: 青い円盤に彫られた渦巻きと赤い穴 */
+/**
+ * 面2 大蛇の回廊。
+ * 実機は紺色の壁が 5 周する深い溝で、その中を鉄球が転がる。
+ * 溝の断面を出すため、暗い谷と明るい立ち上がりを重ねて描く。
+ */
 function faceSpiral(ctx: Ctx, ink: string, lit: boolean): void {
-
   const cx = SIZE / 2;
-  const cy = 368;
-  const r = 124;
+  const cy = 366;
+  const r = 126;
 
-  ctx.fillStyle = lit ? '#000' : C.bodyDark;
+  // 外周は割れた岩の縁。真円にしない
+  ctx.fillStyle = lit ? '#000' : C.bodyLit;
   ctx.beginPath();
-  ctx.arc(cx, cy, r + 12, 0, Math.PI * 2);
+  for (let i = 0; i <= 84; i += 1) {
+    const a = (i / 84) * Math.PI * 2;
+    const rr = r + 18 + Math.sin(i * 2.3) * 5 + Math.cos(i * 1.1) * 4;
+    const x = cx + Math.cos(a) * rr;
+    const y = cy + Math.sin(a) * rr;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
   ctx.fill();
 
-  // 青い円盤
+  ctx.fillStyle = lit ? '#000' : C.blueDark;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r + 6, 0, Math.PI * 2);
+  ctx.fill();
   ctx.fillStyle = lit ? '#000' : C.blue;
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fill();
 
-  // 彫られた渦巻き。溝は明るい青で立ち上がりを出す
-  const turns = 3.2;
-  const r0 = r * 0.88;
+  const turns = 5;
+  const r0 = r * 0.9;
   const spiralAt = (deg: number) => {
     const th = (deg * Math.PI) / 180 + Math.PI / 2;
-    const rr = r0 - (r0 * 0.82 * deg) / (360 * turns);
+    const rr = r0 - (r0 * 0.84 * deg) / (360 * turns);
     return { x: cx + Math.cos(th) * rr, y: cy + Math.sin(th) * rr };
   };
-
-  ctx.strokeStyle = lit ? '#000' : C.blueDark;
-  ctx.lineWidth = 20;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  for (let d = 0; d <= 360 * turns; d += 4) {
-    const p = spiralAt(d);
-    if (d === 0) ctx.moveTo(p.x, p.y);
-    else ctx.lineTo(p.x, p.y);
-  }
-  ctx.stroke();
-
-  ctx.strokeStyle = lit ? '#000' : C.blueLit;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  for (let d = 0; d <= 360 * turns; d += 4) {
-    const p = spiralAt(d);
-    if (d === 0) ctx.moveTo(p.x, p.y);
-    else ctx.lineTo(p.x, p.y);
-  }
-  ctx.stroke();
-
-  // 穴。実機では赤く見える
-  for (let i = 1; i <= 4; i += 1) {
-    const p = spiralAt((360 * turns * i) / 5);
-    ctx.fillStyle = lit ? ink : C.holeRed;
+  const strokeSpiral = (color: string, width: number, dx = 0, dy = 0) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+    for (let d = 0; d <= 360 * turns; d += 3) {
+      const p = spiralAt(d);
+      if (d === 0) ctx.moveTo(p.x + dx, p.y + dy);
+      else ctx.lineTo(p.x + dx, p.y + dy);
+    }
+    ctx.stroke();
+  };
+
+  // 壁の厚み → 溝の谷 → 立ち上がりの光、の順に重ねて断面を作る
+  strokeSpiral(lit ? '#000' : '#0d1440', 17);
+  strokeSpiral(lit ? '#000' : '#1a2a70', 11, 0, -1.5);
+  strokeSpiral(lit ? '#000' : 'rgba(140, 160, 240, 0.5)', 2.5, 0, -4);
+
+  // 中心の穴と赤い表示灯
+  ctx.fillStyle = lit ? '#000' : '#07070c';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 19, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = lit ? ink : '#ff2a18';
+  ctx.beginPath();
+  ctx.arc(cx + 26, cy - 22, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 溝を転がる鉄球
+  if (!lit) {
+    const b = spiralAt(360 * 1.6);
+    ctx.fillStyle = '#d8dce4';
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, 7, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // 中心の大蛇の口
-  ctx.fillStyle = lit ? ink : C.groove;
-  ctx.beginPath();
-  ctx.arc(cx, cy, 17, 0, Math.PI * 2);
+  // 下部の脱出口と、右下の青い岩塊
+  ctx.fillStyle = lit ? '#000' : '#07070c';
+  roundRect(ctx, cx - 16, cy + r - 6, 32, 40, 6);
   ctx.fill();
-
-  // 左下の発射口
-  ctx.fillStyle = lit ? '#000' : C.handle;
-  roundRect(ctx, cx - r - 34, cy + 44, 30, 56, 8);
+  ctx.fillStyle = lit ? '#000' : C.blueLit;
+  roundRect(ctx, cx + r - 22, cy + r * 0.55, 44, 54, 12);
   ctx.fill();
 }
 
@@ -484,69 +550,93 @@ function faceDoor(ctx: Ctx, _ink: string, lit: boolean): void {
   ctx.fillRect(fx - 5, fy + 24, 10, 20);
 }
 
-/** 面4 呪われた谷: 輪が連なる黒い針金の迷路 */
+/**
+ * 面4 呪われた谷。
+ * 実機は直角のない有機的な曲線の丸棒が、素地の上に浮いて張られている。
+ * 受け皿のパネルは無く、棒が直接ついていて落ち影が出る。
+ */
 function faceWire(ctx: Ctx, ink: string, lit: boolean): void {
   drawScoreWindow(ctx, lit);
 
   const cx = SIZE / 2;
   const cy = 372;
-  const w = 296;
-  const h = 214;
+  const w = 330;
+  const h = 220;
 
-  // 針金を張る窪み
-  ctx.fillStyle = lit ? '#000' : C.bodyDark;
-  roundRect(ctx, cx - w / 2 - 10, cy - h / 2 - 10, w + 20, h + 20, 12);
-  ctx.fill();
-  ctx.fillStyle = lit ? '#000' : C.bodyLit;
-  roundRect(ctx, cx - w / 2, cy - h / 2, w, h, 8);
-  ctx.fill();
-
-  // 実機の針金は角ばった輪がいくつも連なる形をしている。
-  // 単純なジグザグではなく、行って戻る枝を作る。
-  ctx.strokeStyle = lit ? '#000' : C.groove;
-  ctx.lineWidth = 13;
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
-  const sx = cx - w / 2 + 24;
-  const sy = cy + h / 2 - 26;
-  const loops: [number, number][][] = [
-    // 左下から上へ上がり、輪を描いて右へ抜ける
-    [[0, 0], [0, -60], [38, -60], [38, -110], [-2, -110], [-2, -150]],
-    [[38, -60], [78, -60], [78, -16], [120, -16], [120, -70]],
-    [[120, -70], [162, -70], [162, -126], [206, -126], [206, -74]],
-    [[206, -74], [246, -74], [246, -20], [206, -20], [206, 8]],
-    [[78, -16], [78, 22], [130, 22], [130, -4]],
+  // 曲線の経路。折れではなく滑らかにつなぐ
+  const pts: [number, number][] = [
+    [-0.96, 0.78], [-0.80, 0.10], [-0.92, -0.48], [-0.55, -0.72],
+    [-0.30, -0.30], [-0.48, 0.24], [-0.10, 0.52], [0.18, 0.06],
+    [0.02, -0.52], [0.38, -0.78], [0.66, -0.40], [0.48, 0.14],
+    [0.76, 0.52], [0.96, 0.10],
   ];
-  for (const seg of loops) {
+  const trace = () => {
     ctx.beginPath();
-    seg.forEach(([dx, dy], i) => {
-      if (i === 0) ctx.moveTo(sx + dx, sy + dy);
-      else ctx.lineTo(sx + dx, sy + dy);
+    const P = (i: number) => ({
+      x: cx + pts[i][0] * (w / 2),
+      y: cy + pts[i][1] * (h / 2),
     });
+    const a = P(0);
+    ctx.moveTo(a.x, a.y);
+    for (let i = 1; i < pts.length - 1; i += 1) {
+      const c = P(i);
+      const n = P(i + 1);
+      ctx.quadraticCurveTo(c.x, c.y, (c.x + n.x) / 2, (c.y + n.y) / 2);
+    }
+    const last = P(pts.length - 1);
+    ctx.lineTo(last.x, last.y);
+  };
+
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // 落ち影。素地から浮いていることを示す
+  if (!lit) {
+    ctx.save();
+    ctx.translate(5, 7);
+    ctx.strokeStyle = 'rgba(70, 40, 6, 0.35)';
+    ctx.lineWidth = 15;
+    trace();
     ctx.stroke();
+    ctx.restore();
   }
 
-  // 両端の柱
-  ctx.fillStyle = ink;
-  for (const [dx, dy] of [[0, 0], [206, 8]] as [number, number][]) {
-    ctx.beginPath();
-    ctx.arc(sx + dx, sy + dy, 13, 0, Math.PI * 2);
-    ctx.fill();
+  // 丸棒
+  ctx.strokeStyle = lit ? '#000' : C.groove;
+  ctx.lineWidth = 15;
+  trace();
+  ctx.stroke();
+  // 上側のハイライトで丸みを出す
+  if (!lit) {
+    ctx.save();
+    ctx.translate(-1.5, -2.5);
+    ctx.strokeStyle = 'rgba(150, 150, 156, 0.5)';
+    ctx.lineWidth = 4;
+    trace();
+    ctx.stroke();
+    ctx.restore();
   }
 
-  // 輪と紫の持ち手
-  const hx = sx + 120;
-  const hy = sy - 16;
+  // 輪と紫のグリップ
+  const hx = cx + 0.18 * (w / 2);
+  const hy = cy + 0.06 * (h / 2);
   ctx.strokeStyle = lit ? ink : '#d8d2c4';
   ctx.lineWidth = 6;
   ctx.beginPath();
-  ctx.arc(hx, hy, 19, 0, Math.PI * 2);
+  ctx.arc(hx, hy, 20, 0, Math.PI * 2);
   ctx.stroke();
   ctx.strokeStyle = lit ? '#000' : C.handle;
-  ctx.lineWidth = 19;
+  ctx.lineWidth = 20;
   ctx.beginPath();
-  ctx.moveTo(hx + 14, hy + 16);
-  ctx.lineTo(hx + 54, hy + 62);
+  ctx.moveTo(hx + 15, hy + 17);
+  ctx.lineTo(hx + 58, hy + 66);
+  ctx.stroke();
+  // 黒いコード
+  ctx.strokeStyle = lit ? '#000' : 'rgba(20,20,20,0.8)';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(hx + 58, hy + 66);
+  ctx.quadraticCurveTo(hx + 30, hy + 110, cx - 40, SIZE - 24);
   ctx.stroke();
 }
 
