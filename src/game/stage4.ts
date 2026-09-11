@@ -54,28 +54,51 @@ interface Point {
 function buildWire(bends: number): Point[] {
   const pts: Point[] = [];
   const marginX = 26;
-  const top = 40;
-  const bottom = H - 40;
+  const top = 38;
+  const bottom = H - 34;
   const usableW = W - marginX * 2;
+  const span = bottom - top;
 
-  pts.push({ x: marginX, y: bottom });
+  let x = marginX;
+  let y = bottom;
+  pts.push({ x, y });
 
-  for (let i = 1; i <= bends; i += 1) {
-    const x = marginX + (usableW * i) / (bends + 1);
-    // 上下交互に振る。振り幅を毎回変えて単調にしない
-    const toTop = i % 2 === 1;
-    const span = bottom - top;
-    const amount = span * (0.55 + Math.random() * 0.45);
-    const y = toTop ? bottom - amount : top + amount;
-    pts.push({ x, y: clamp(y, top, bottom) });
+  // 右へ進む区間の数。行って戻る枝を挟むので、進む量は一定にしない
+  const legs = Math.max(3, Math.round(bends * 0.7));
+  const stepX = usableW / legs;
 
-    // ときどき角を鋭くするため、同じ x で短く折り返す
-    if (Math.random() < 0.35 && i < bends) {
-      const back = toTop ? y + 26 : y - 26;
-      pts.push({ x: x + 14, y: clamp(back, top, bottom) });
+  for (let i = 0; i < legs; i += 1) {
+    const up = i % 2 === 0;
+
+    // 1) 縦に大きく振る
+    const rise = span * (0.4 + Math.random() * 0.32);
+    y = clamp(up ? y - rise : y + rise, top, bottom);
+    pts.push({ x, y });
+
+    // 2) 横に進む
+    x = clamp(x + stepX * (0.5 + Math.random() * 0.3), marginX, W - marginX);
+    pts.push({ x, y });
+
+    // 3) いったん戻って輪をつくる。
+    //    実機の針金は単純なジグザグではなく、折り返しが連なっている。
+    if (Math.random() < 0.65 && i < legs - 1) {
+      const hookH = span * (0.15 + Math.random() * 0.13);
+      const hookW = stepX * (0.28 + Math.random() * 0.24);
+      const y2 = clamp(up ? y + hookH : y - hookH, top, bottom);
+      pts.push({ x, y: y2 });
+      const xBack = clamp(x - hookW, marginX, W - marginX);
+      pts.push({ x: xBack, y: y2 });
+      const y3 = clamp(up ? y2 + hookH * 0.7 : y2 - hookH * 0.7, top, bottom);
+      pts.push({ x: xBack, y: y3 });
+      const xFwd = clamp(x + hookW * 0.85, marginX, W - marginX);
+      pts.push({ x: xFwd, y: y3 });
+      x = xFwd;
+      y = y3;
     }
   }
 
+  // 右上のゴールへ寄せる
+  pts.push({ x: W - marginX, y });
   pts.push({ x: W - marginX, y: top });
   return pts;
 }

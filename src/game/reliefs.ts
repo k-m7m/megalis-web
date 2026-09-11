@@ -71,3 +71,34 @@ export const WINGED_DISC = `
   <path d="M96 13 C112 5 134 4 156 9 L140 15 L154 18 L136 22 L148 26 L124 29 C110 29 100 23 96 20 Z" />
   <circle class="mg-disc-core" cx="80" cy="17" r="11" />
 `;
+
+/**
+ * 祭室の中央に座るファラオ像。
+ * 実機はここが立体の金色の像になっている。
+ * 幅 96、高さ 120 の枠に収まるよう描いてある。
+ */
+export const SEATED_PHARAOH = `
+  <!-- 玉座 -->
+  <path d="M14 56 H82 V120 H14 Z" class="mg-throne" />
+  <path d="M8 112 H88 V120 H8 Z" class="mg-throne" />
+  <!-- ネメス頭巾 -->
+  <path d="M28 30 Q28 4 48 4 Q68 4 68 30 L74 56 L58 60 H38 L22 56 Z" />
+  <!-- 頭巾の縞 -->
+  <path d="M32 14 H64 V20 H32 Z" class="mg-relief-inlay" />
+  <path d="M30 26 H66 V31 H30 Z" class="mg-relief-inlay" />
+  <!-- 顔 -->
+  <path d="M36 30 H60 V54 Q48 62 36 54 Z" class="mg-relief-skin" />
+  <circle class="mg-relief-eye" cx="41" cy="40" r="2.4" />
+  <circle class="mg-relief-eye" cx="55" cy="40" r="2.4" />
+  <!-- つけひげ -->
+  <path d="M43 56 H53 L51 72 H45 Z" class="mg-relief-skin" />
+  <!-- 襟飾り -->
+  <path d="M24 58 H72 L68 74 H28 Z" />
+  <path d="M30 62 H66 L64 70 H32 Z" class="mg-relief-inlay" />
+  <!-- 胴と膝に置いた腕 -->
+  <path d="M28 74 H68 V102 H28 Z" />
+  <path d="M22 82 H74 V92 H22 Z" />
+  <!-- 脚 -->
+  <path d="M30 102 H46 V120 H30 Z" />
+  <path d="M50 102 H66 V120 H50 Z" />
+`;

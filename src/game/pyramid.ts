@@ -8,6 +8,7 @@
 
 import {
   AdditiveBlending,
+  BoxGeometry,
   NoToneMapping,
   AmbientLight,
   BufferAttribute,
@@ -69,7 +70,7 @@ export class PyramidView {
   private pivot = new Group();
   private faces: Mesh[] = [];
   private glowMats: MeshBasicMaterial[] = [];
-  private capstone: Mesh;
+  private capCore!: Mesh;
   private capLight: PointLight;
   private opts: PyramidOptions;
 
@@ -120,11 +121,12 @@ export class PyramidView {
     this.camera = new PerspectiveCamera(38, 1, 0.1, 100);
 
     this.buildLights();
-    this.capstone = this.buildCapstone();
+    this.buildCapstone();
     this.capLight = new PointLight(0xfcc09c, 0, 6, 2);
     this.capLight.position.set(0, HEIGHT + 0.12, 0);
     this.pivot.add(this.capLight);
     this.buildFaces();
+    this.buildBasePlate();
     this.buildGround();
 
     this.scene.add(this.pivot);
@@ -139,13 +141,13 @@ export class PyramidView {
   // --- 組み立て ---------------------------------------------------------
 
   private buildLights(): void {
-    this.scene.add(new AmbientLight(0xa89a92, 1.9));
+    this.scene.add(new AmbientLight(0xb0a89c, 1.75));
 
     const key = new DirectionalLight(0xffe0b4, 2.4);
     key.position.set(1.5, 2.4, 3.6);
     this.scene.add(key);
 
-    const rim = new DirectionalLight(0x9ab4e8, 0.5);
+    const rim = new DirectionalLight(0xcfd6e4, 0.22);
     rim.position.set(-3, 1.2, -2.4);
     this.scene.add(rim);
 
@@ -187,8 +189,8 @@ export class PyramidView {
         map: colorTex,
         bumpMap: bumpTex,
         bumpScale: 0.6,
-        roughness: 0.88,
-        metalness: 0.02,
+        roughness: 0.82,
+        metalness: 0,
       });
 
       const mesh = new Mesh(geo, mat);
@@ -215,34 +217,73 @@ export class PyramidView {
     }
   }
 
-  /** 頂点の冠石。実機の透明なピラミッド頂部にあたる */
-  private buildCapstone(): Mesh {
-    const geo = new BufferGeometry();
-    const s = 0.17;
-    const h = 0.2;
-    const y = HEIGHT - 0.02;
-    const verts: number[] = [];
-    const corners = [
-      [-s, y, s], [s, y, s], [s, y, -s], [-s, y, -s],
-    ];
-    for (let i = 0; i < 4; i += 1) {
-      const p = corners[i];
-      const q = corners[(i + 1) % 4];
-      verts.push(p[0], p[1], p[2], q[0], q[1], q[2], 0, y + h, 0);
-    }
-    geo.setAttribute('position', new BufferAttribute(new Float32Array(verts), 3));
-    geo.computeVertexNormals();
+  /**
+   * 頂点の冠石。
+   * 実機はスモークがかった透明な小ピラミッドが四角い台座に載り、
+   * 内側からアンバーに光る。板を 1 枚立てるのではなく、
+   * 台座・外殻・発光する芯の 3 つで組む。
+   */
+  private buildCapstone(): void {
+    const collarY = HEIGHT - 0.1;
+    const capBase = 0.2;
+    const capH = 0.24;
 
-    const mat = new MeshStandardMaterial({
-      color: new Color(0xffdcb4),
-      emissive: new Color(0xfcc09c),
-      emissiveIntensity: 0.45,
-      roughness: 0.25,
-      metalness: 0.6,
-    });
-    const mesh = new Mesh(geo, mat);
-    this.pivot.add(mesh);
-    return mesh;
+    // 台座。頂点の少し下に挟む平らな襟
+    const collar = new Mesh(
+      new BoxGeometry(capBase * 1.25, 0.05, capBase * 1.25),
+      new MeshStandardMaterial({ color: new Color(0xb07c38), roughness: 0.8 }),
+    );
+    collar.position.y = collarY;
+    this.pivot.add(collar);
+
+    const capGeo = (half: number, h: number, y0: number) => {
+      const geo = new BufferGeometry();
+      const verts: number[] = [];
+      const corners = [
+        [-half, y0, half], [half, y0, half], [half, y0, -half], [-half, y0, -half],
+      ];
+      for (let i = 0; i < 4; i += 1) {
+        const a = corners[i];
+        const b = corners[(i + 1) % 4];
+        verts.push(a[0], a[1], a[2], b[0], b[1], b[2], 0, y0 + h, 0);
+      }
+      geo.setAttribute('position', new BufferAttribute(new Float32Array(verts), 3));
+      geo.computeVertexNormals();
+      return geo;
+    };
+
+    // 内側の芯。ここが光る
+    const core = new Mesh(
+      capGeo(capBase * 0.42, capH * 0.7, collarY + 0.03),
+      new MeshBasicMaterial({ color: new Color(0xffb066) }),
+    );
+    this.pivot.add(core);
+
+    // 外殻。スモークの樹脂
+    const shell = new Mesh(
+      capGeo(capBase / 2, capH, collarY + 0.02),
+      new MeshStandardMaterial({
+        color: new Color(0xd8c8b0),
+        transparent: true,
+        opacity: 0.48,
+        roughness: 0.18,
+        metalness: 0.1,
+      }),
+    );
+    this.pivot.add(shell);
+
+    this.capCore = core;
+    this.pivot.add(shell);
+  }
+
+  /** 底の黒い台座。実機はここに載っている */
+  private buildBasePlate(): void {
+    const plate = new Mesh(
+      new BoxGeometry(HALF * 2.12, 0.09, HALF * 2.12),
+      new MeshStandardMaterial({ color: new Color(0x141414), roughness: 0.55 }),
+    );
+    plate.position.y = -0.045;
+    this.pivot.add(plate);
   }
 
   /** 足元の影。板に円のぼかしを描いて敷く */
@@ -464,8 +505,9 @@ export class PyramidView {
       const pulse = 0.88 + Math.sin(t / 620) * 0.12;
       this.glowMats[i].opacity = this.pick * front * pulse * 0.42;
     }
-    const capMat = this.capstone.material as MeshStandardMaterial;
-    capMat.emissiveIntensity = 0.45 + this.pick * 2.6;
+    const coreMat = this.capCore.material as MeshBasicMaterial;
+    const heat = 0.55 + this.pick * 0.45;
+    coreMat.color.setRGB(1, 0.62 + this.pick * 0.22, 0.36 + this.pick * 0.3).multiplyScalar(heat);
     this.capLight.intensity = this.pick * 9;
 
     this.renderer.render(this.scene, this.camera);

@@ -8,7 +8,7 @@
  * 左右の柱にアヌビスとファラオが浮き彫りで立ち、奥の壁に石板が並ぶ。
  */
 
-import { ANUBIS, PHARAOH, WINGED_DISC } from './reliefs';
+import { ANUBIS, PHARAOH, SEATED_PHARAOH, WINGED_DISC } from './reliefs';
 import type { StageFactory, StageHost, StageInstance } from './types';
 import { AbortError, el, isAbortError, randIntAvoid, sleep } from './util';
 
@@ -43,11 +43,22 @@ const ROOM_X = DOOR_X + JAMB_W;
 const ROOM_W = DOOR_W - JAMB_W * 2;
 const ROOM_Y = LINTEL_Y + LINTEL_H;
 const ROOM_H = 206;
-/** 石板の並び */
-const PAD = 12;
-const GAP = 7;
+/**
+ * 石板の並び。
+ * 実機は祭室の中央にファラオ像が座り、そのまわりを光る板が囲む。
+ * 3x3 の格子のうち中央を像に譲り、残り 8 枠に 8 枚を置く。
+ * 9 枚目は像の真上のまぐさ石の位置に置く。
+ */
+const PAD = 10;
+const GAP = 6;
 const CELL_W = (ROOM_W - PAD * 2 - GAP * 2) / 3;
 const CELL_H = (ROOM_H - PAD * 2 - GAP * 2) / 3;
+/** 3x3 のうち中央 (1,1) を除いた 8 か所 */
+const RING_CELLS: [number, number][] = [
+  [0, 0], [1, 0], [2, 0],
+  [0, 1], [2, 1],
+  [0, 2], [1, 2], [2, 2],
+];
 
 interface Params {
   startLen: number;
@@ -86,16 +97,21 @@ function carvedWall(): string {
 
 function slabMarkup(): string {
   return GLYPHS.map((glyph, i) => {
-    const col = i % 3;
-    const row = Math.floor(i / 3);
-    const x = ROOM_X + PAD + col * (CELL_W + GAP);
-    const y = ROOM_Y + PAD + row * (CELL_H + GAP);
+    // 8 枚は像を囲む枠へ。9 枚目はまぐさ石の中央に置く
+    const ring = RING_CELLS[i];
+    const x = ring
+      ? ROOM_X + PAD + ring[0] * (CELL_W + GAP)
+      : ROOM_X + PAD + CELL_W + GAP;
+    const y = ring
+      ? ROOM_Y + PAD + ring[1] * (CELL_H + GAP)
+      : LINTEL_Y + 4;
+    const h = ring ? CELL_H : LINTEL_H - 8;
     const gx = x + CELL_W / 2 - 16;
-    const gy = y + CELL_H / 2 - 16;
+    const gy = y + h / 2 - 16;
     return `
       <g class="mg-slab" data-index="${i}" role="button" aria-label="石板 ${i + 1}">
         <rect class="mg-slab-face" x="${x.toFixed(1)}" y="${y.toFixed(1)}"
-              width="${CELL_W.toFixed(1)}" height="${CELL_H.toFixed(1)}" rx="3" />
+              width="${CELL_W.toFixed(1)}" height="${(ring ? CELL_H : LINTEL_H - 8).toFixed(1)}" rx="3" />
         <svg class="mg-slab-glyph" x="${gx.toFixed(1)}" y="${gy.toFixed(1)}"
              width="32" height="32" viewBox="0 0 32 32"
              fill="none" stroke="currentColor" stroke-width="2"
@@ -167,6 +183,11 @@ export const createStage3: StageFactory = (
       <!-- 祭室の縁。柱より手前に置いて奥まって見せる -->
       <rect class="mg-room-edge" x="${ROOM_X}" y="${ROOM_Y}"
             width="${ROOM_W}" height="${ROOM_H}" />
+
+      <!-- 祭室の中央に座るファラオ像 -->
+      <g class="mg-relief mg-seated" transform="translate(${ROOM_X + ROOM_W / 2 - 48} ${ROOM_Y + ROOM_H / 2 - 62})">
+        ${SEATED_PHARAOH}
+      </g>
 
       <!-- 石板 -->
       ${slabMarkup()}

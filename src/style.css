@@ -1046,3 +1046,29 @@ h3 {
   color: var(--mg-amber);
   font-weight: 700;
 }
+
+/* 祭室の中央に座るファラオ像 */
+.mg-seated path,
+.mg-seated circle {
+  fill: #e0b86a;
+  stroke: rgba(0, 0, 0, 0.5);
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+}
+
+.mg-seated .mg-throne {
+  fill: #7a4c18;
+}
+
+.mg-seated .mg-relief-skin {
+  fill: #c89050;
+}
+
+.mg-seated .mg-relief-inlay {
+  fill: #283888;
+}
+
+.mg-seated .mg-relief-eye {
+  fill: #17130d;
+  stroke: none;
+}

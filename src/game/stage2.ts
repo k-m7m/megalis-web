@@ -360,21 +360,21 @@ export const createStage2: StageFactory = (
 
       ctx.beginPath();
       ctx.arc(p.x, p.y, HOLE_R, 0, Math.PI * 2);
-      ctx.fillStyle = lit ? 'rgba(94, 194, 122, 0.85)' : '#0d0b08';
+      ctx.fillStyle = lit ? '#ffe08a' : '#a02820';
       ctx.fill();
       ctx.lineWidth = 2;
-      ctx.strokeStyle = lit ? '#8ef0ab' : 'rgba(216, 152, 104, 0.65)';
+      ctx.strokeStyle = lit ? '#fff2c8' : '#5a1410';
       ctx.stroke();
 
       if (lit) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, HOLE_R + 5, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(94, 194, 122, 0.35)';
+        ctx.strokeStyle = 'rgba(255, 224, 138, 0.45)';
         ctx.lineWidth = 3;
         ctx.stroke();
       }
 
-      ctx.fillStyle = lit ? '#0d1a10' : 'rgba(232, 184, 136, 0.8)';
+      ctx.fillStyle = lit ? '#3a2000' : 'rgba(255, 210, 200, 0.85)';
       ctx.font = 'bold 10px "Noto Sans JP", sans-serif';
       ctx.fillText(String(j + 1), p.x, p.y + 0.5);
     }
@@ -382,7 +382,7 @@ export const createStage2: StageFactory = (
 
   function drawEntrance(): void {
     const p = pts[0];
-    ctx.strokeStyle = 'rgba(232, 184, 136, 0.9)';
+    ctx.strokeStyle = '#e0b86a';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(p.x - 9, p.y + 12);
@@ -392,13 +392,38 @@ export const createStage2: StageFactory = (
     ctx.stroke();
   }
 
+  /** 実機と同じ、渦巻きが彫られた青い円盤 */
+  function drawDisc(): void {
+    // 盤の座
+    ctx.fillStyle = '#8a5e1c';
+    ctx.beginPath();
+    ctx.arc(CX, CY, R_OUTER + 20, 0, Math.PI * 2);
+    ctx.fill();
+
+    const g = ctx.createRadialGradient(CX - 40, CY - 50, 20, CX, CY, R_OUTER + 14);
+    g.addColorStop(0, '#3a4ea8');
+    g.addColorStop(1, '#1d2a70');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(CX, CY, R_OUTER + 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(120, 140, 220, 0.5)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(CX, CY, R_OUTER + 8, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
   function draw(): void {
     ctx.clearRect(0, 0, W, H);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    strokeSpiral('rgba(62, 58, 82, 0.85)', 20);
-    strokeSpiral('rgba(150, 142, 190, 0.35)', 1.5);
+    drawDisc();
+    // 彫り込まれた溝。暗い青の谷に明るい縁が立つ
+    strokeSpiral('#16215c', 22);
+    strokeSpiral('rgba(130, 150, 230, 0.45)', 2.5);
     drawSnakeMouth();
     drawHoles();
     drawEntrance();
