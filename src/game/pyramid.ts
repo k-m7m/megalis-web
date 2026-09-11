@@ -37,7 +37,7 @@ const HALF = 1.0;
  * なるよう、実際に描いて測りながら決めた。
  * 見下ろす角度でも見え方が変わるので、数値だけでは決められない。
  */
-const HEIGHT = 1.22;
+const HEIGHT = 1.38;
 /** 面の数 */
 export const FACE_COUNT = 4;
 
@@ -516,7 +516,7 @@ export class PyramidView {
     const k = Math.min(dt * this.camEase, 1);
     this.zoom += (this.zoomTarget - this.zoom) * k;
     this.lift += (this.liftTarget - this.lift) * k;
-    const dist = 3.5 * this.zoom;
+    const dist = 3.9 * this.zoom;
     this.camera.position.set(0, 1.05 * this.lift + 0.28, dist);
     this.camera.lookAt(0, HEIGHT * 0.42, 0);
 
