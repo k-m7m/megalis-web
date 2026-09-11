@@ -43,8 +43,9 @@ const PARAMS: Record<string, Params> = {
 };
 
 /** 虫眼鏡の半径（盤の座標）と倍率 */
-const LENS_R = 42;
 const LENS_ZOOM = 2.4;
+/** 虫眼鏡の見た目の大きさ (CSS px) */
+const LENS_CSS = 108;
 
 interface Point {
   x: number;
@@ -155,12 +156,15 @@ export const createStage4: StageFactory = (
   const canvas = el('canvas', 'mg-canvas mg-canvas-wire');
   canvasWrap.append(canvas);
 
+  const lensCv = el('canvas', 'mg-lens') as HTMLCanvasElement;
+  lensCv.style.display = 'none';
+
   const hint = el(
     'p',
     'mg-launch-hint',
     '緑の柱の輪を押さえたまま動かす。押さえている間は手元が虫眼鏡で拡大される',
   );
-  wrap.append(canvasWrap, hint);
+  wrap.append(canvasWrap, lensCv, hint);
   root.appendChild(wrap);
 
   const ctx = fitCanvas(canvas, W, H);
@@ -175,6 +179,14 @@ export const createStage4: StageFactory = (
   if (!sceneCtx) throw new Error('2d context is unavailable');
   const g: CanvasRenderingContext2D = sceneCtx;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // 画素の粗さが出ないよう、レンズも画面の細かさに合わせて持つ
+  const lensPx = Math.round((LENS_CSS * dpr) / LENS_ZOOM);
+  lensCv.width = lensPx;
+  lensCv.height = lensPx;
+  const lensRaw = lensCv.getContext('2d');
+  if (!lensRaw) throw new Error('2d context is unavailable');
+  const lensCtx: CanvasRenderingContext2D = lensRaw;
+  lensCtx.imageSmoothingEnabled = true;
   /** 指で操作しているときは、輪が指の下に隠れるので虫眼鏡を遠くに置く */
   let lensLift = 74;
 
@@ -266,7 +278,8 @@ export const createStage4: StageFactory = (
     // 輪のある場所を握る。離れた場所からは握れない
     if (Math.hypot(p.x - ringPos.x, p.y - ringPos.y) > REGRAB_DIST) return;
     holding = true;
-    lensLift = e.pointerType === 'mouse' ? 66 : 86;
+    pointer = p;
+    lensLift = e.pointerType === 'mouse' ? 70 : 102;
     canvas.setPointerCapture(e.pointerId);
     host.setStatus('針金に触れずに滑らせろ。');
   }
@@ -284,6 +297,12 @@ export const createStage4: StageFactory = (
     }
   }
 
+  /** iPhone は長押しで OS の虫眼鏡を出す。既定の動きごと止める */
+  function onTouchStart(e: TouchEvent): void {
+    e.preventDefault();
+  }
+
+  canvas.addEventListener('touchstart', onTouchStart, { passive: false });
   canvas.addEventListener('pointerdown', onPointerDown);
   canvas.addEventListener('pointermove', onPointerMove);
   canvas.addEventListener('pointerup', onPointerUp);
@@ -470,57 +489,61 @@ export const createStage4: StageFactory = (
     // 画面へ転送し、そのうえに虫眼鏡を重ねる
     ctx.clearRect(0, 0, W, H);
     ctx.drawImage(scene, 0, 0, W, H);
-    drawLens();
+    updateLens();
   }
 
   /**
-   * 虫眼鏡。輪のまわりを拡大して、輪の少し上（上が狭ければ下）に出す。
-   * 指で操作すると輪が指に隠れるので、指から離れた位置に置いている。
+   * 虫眼鏡。輪のまわりを拡大して、輪の上に浮かせる。
+   * 指で操作すると輪が指に隠れるので、必ず輪より上に置く。
+   * 盤の上端より高い位置にも出せるよう、盤とは別の要素にしてある。
    */
-  function drawLens(): void {
-    if (!holding || cleared) return;
-    const lx = clamp(ringPos.x, LENS_R + 4, W - LENS_R - 4);
-    let ly = ringPos.y - lensLift;
-    if (ly - LENS_R < 4) ly = ringPos.y + lensLift;
-    ly = clamp(ly, LENS_R + 4, H - LENS_R - 4);
-    const half = LENS_R / LENS_ZOOM;
+  function updateLens(): void {
+    if (!holding || cleared || !running) {
+      lensCv.style.display = 'none';
+      return;
+    }
+    const cr = canvas.getBoundingClientRect();
+    const wr = wrap.getBoundingClientRect();
+    const scale = cr.width / W || 1;
+    // 隠れてほしくないのは指なので、置く位置は指を基準にする。
+    // 写す中身は輪のまわり。
+    const px = cr.left - wr.left + pointer.x * scale;
+    const py = cr.top - wr.top + pointer.y * scale;
 
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(lx, ly, LENS_R, 0, Math.PI * 2);
-    ctx.clip();
-    // 盤の外まで拡大したときに透けないよう、素地で埋めておく
-    ctx.fillStyle = '#c08a3e';
-    ctx.fillRect(lx - LENS_R, ly - LENS_R, LENS_R * 2, LENS_R * 2);
-    ctx.drawImage(
+    let left = px - LENS_CSS / 2;
+    let top = py - lensLift * scale - LENS_CSS / 2;
+    // 画面の外にはみ出すときだけ、出せるところまで下げる
+    const minTop = -(wr.top - 6);
+    if (top < minTop) top = minTop;
+    // それでも輪に掛かってしまうなら、指に隠れない横へ逃がす
+    if (top + LENS_CSS > py - 14) {
+      top = py - LENS_CSS / 2;
+      left =
+        px < wr.width / 2
+          ? px + LENS_CSS * 0.75
+          : px - LENS_CSS * 1.75;
+    }
+    left = clamp(left, 2, Math.max(2, wr.width - LENS_CSS - 2));
+
+    lensCv.style.display = 'block';
+    lensCv.style.left = `${left}px`;
+    lensCv.style.top = `${top}px`;
+
+    // 盤の座標で、レンズに写る範囲の半径
+    const half = LENS_CSS / 2 / LENS_ZOOM / scale;
+    lensCtx.fillStyle = '#c08a3e';
+    lensCtx.fillRect(0, 0, lensPx, lensPx);
+    lensCtx.drawImage(
       scene,
       (ringPos.x - half) * dpr,
       (ringPos.y - half) * dpr,
       half * 2 * dpr,
       half * 2 * dpr,
-      lx - LENS_R,
-      ly - LENS_R,
-      LENS_R * 2,
-      LENS_R * 2,
+      0,
+      0,
+      lensPx,
+      lensPx,
     );
-    ctx.restore();
-
-    // レンズの縁
-    ctx.strokeStyle = 'rgba(20, 12, 4, 0.55)';
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.arc(lx, ly, LENS_R + 1, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = '#e0a94a';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(lx, ly, LENS_R, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(255, 236, 190, 0.5)';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.arc(lx, ly, LENS_R - 3, Math.PI * 1.1, Math.PI * 1.75);
-    ctx.stroke();
   }
 
   function loop(t: number): void {
@@ -544,6 +567,7 @@ export const createStage4: StageFactory = (
   function dispose(): void {
     running = false;
     cancelAnimationFrame(rafId);
+    canvas.removeEventListener('touchstart', onTouchStart);
     canvas.removeEventListener('pointerdown', onPointerDown);
     canvas.removeEventListener('pointermove', onPointerMove);
     canvas.removeEventListener('pointerup', onPointerUp);
