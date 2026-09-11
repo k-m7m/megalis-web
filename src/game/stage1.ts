@@ -124,19 +124,19 @@ export const createStage1: StageFactory = (
             </g>`;
         }).join('')}
       </g>
-      <circle class="mg-dial-knob-side" cx="120" cy="120" r="40" />
+      <circle class="mg-dial-knob-side" cx="120" cy="120" r="32" />
       <g class="mg-dial-grip">
         ${Array.from({ length: 40 }, (_, i) => {
           const a = (i / 40) * Math.PI * 2;
-          const x1 = 120 + Math.cos(a) * 34;
-          const y1 = 120 + Math.sin(a) * 34;
-          const x2 = 120 + Math.cos(a) * 40;
-          const y2 = 120 + Math.sin(a) * 40;
+          const x1 = 120 + Math.cos(a) * 27;
+          const y1 = 120 + Math.sin(a) * 27;
+          const x2 = 120 + Math.cos(a) * 32;
+          const y2 = 120 + Math.sin(a) * 32;
           return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" />`;
         }).join('')}
       </g>
-      <circle class="mg-dial-knob" cx="120" cy="120" r="34" />
-      <circle class="mg-dial-knob-top" cx="120" cy="120" r="18" />
+      <circle class="mg-dial-knob" cx="120" cy="120" r="27" />
+      <circle class="mg-dial-knob-top" cx="120" cy="120" r="14" />
     </svg>
   `;
 

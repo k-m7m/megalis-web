@@ -141,16 +141,18 @@ function drawBody(ctx: Ctx): void {
   frame(44, 'rgba(96, 58, 10, 0.18)', 2);
 
   // 左下の階段状のブロック。実機で段が見えるのはここだけ
-  const bw = SIZE * 0.15;
-  const bx = 44;
-  const by = SIZE - 26;
-  for (let i = 0; i < 4; i += 1) {
-    const h = 13;
-    const w = bw - i * (bw / 6);
-    ctx.fillStyle = 'rgba(96, 58, 10, 0.3)';
+  const bw = SIZE * 0.2;
+  const bx = 40;
+  const by = SIZE - 24;
+  for (let i = 0; i < 5; i += 1) {
+    const h = 12;
+    const w = bw - i * (bw / 7);
+    ctx.fillStyle = 'rgba(226, 160, 104, 0.55)';
     ctx.fillRect(bx, by - i * h, w, h);
-    ctx.fillStyle = C.edgeLit;
-    ctx.fillRect(bx, by - i * h, w, 2.5);
+    ctx.fillStyle = 'rgba(255, 232, 190, 0.5)';
+    ctx.fillRect(bx, by - i * h, w, 3);
+    ctx.fillStyle = 'rgba(96, 58, 10, 0.3)';
+    ctx.fillRect(bx, by - i * h + h - 2, w, 2);
   }
 
   // 斜面に散る小さな彫り。実機は面いっぱいに細かい石の飾りがある。
@@ -331,8 +333,8 @@ function faceDial(ctx: Ctx, ink: string, lit: boolean): void {
   drawControlPanel(ctx, lit, ink);
 
   const cx = SIZE / 2;
-  const cy = 382;
-  const r = 104;
+  const cy = 384;
+  const r = 116;
 
   // 円盤を囲む石のカラー。外縁は不揃いにして岩肌にする
   ctx.fillStyle = lit ? '#000' : C.bodyLit;
@@ -407,7 +409,7 @@ function faceDial(ctx: Ctx, ink: string, lit: boolean): void {
   // 中心の円筒つまみ。
   // 実機は円盤の 1/3 ほどの径で、径の半分ぐらい手前に突き出ている。
   // 溝は側面だけに入れること。上面まで伸ばすと目盛りに見えてしまう。
-  const kr = r * 0.36;
+  const kr = r * 0.30;
   const lift = kr * 0.55;
 
   // 落ち影
