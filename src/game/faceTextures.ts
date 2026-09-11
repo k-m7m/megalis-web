@@ -43,7 +43,7 @@ const C = {
   /** 穴の赤 */
   holeRed: '#a02820',
   /** 紫の持ち手 */
-  handle: '#5a4ab0',
+  handle: '#2b3caf',
   /** 光る板 */
   lampOff: '#7d8996',
   /** 操作ボタン。実機は濃紺 */
@@ -151,6 +151,25 @@ function drawBody(ctx: Ctx): void {
     ctx.fillRect(bx, by - i * h, w, h);
     ctx.fillStyle = C.edgeLit;
     ctx.fillRect(bx, by - i * h, w, 2.5);
+  }
+
+  // 斜面に散る小さな彫り。実機は面いっぱいに細かい石の飾りがある。
+  // 目立たせすぎると段積みに見えるので、明暗の差は小さくする。
+  let seed = 7919;
+  const rnd = (): number => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+  for (let i = 0; i < 90; i += 1) {
+    const y = 120 + rnd() * (SIZE - 180);
+    const e = edgesAt(y);
+    const x = e.left + 26 + rnd() * (e.right - e.left - 52);
+    const w = 6 + rnd() * 14;
+    const h = 4 + rnd() * 7;
+    ctx.fillStyle = 'rgba(96, 58, 10, 0.16)';
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = 'rgba(255, 226, 168, 0.2)';
+    ctx.fillRect(x, y, w, 2);
   }
 
   ctx.restore();
@@ -718,48 +737,48 @@ function faceDoor(ctx: Ctx, _ink: string, lit: boolean): void {
 function faceWire(ctx: Ctx, ink: string, lit: boolean): void {
   drawScoreWindow(ctx, lit);
 
-  /** 同じ形を毎回作るための擬似乱数 */
-  let seed = 20050914;
-  const rnd = (): number => {
-    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-    return seed / 0x7fffffff;
-  };
-
-  // 面は三角形なので、下にいくほど使える幅が広がる。
-  // 経路はその台形いっぱいに広げる。
-  const margin = 34;
-  const spanAt = (y: number): { left: number; right: number } => {
+  // 実機の針金は、規則的な蛇行ではなく、あちこちに折り返しながら
+  // 面いっぱいを這う不定形の曲線。写真をなぞって決めた形を使う。
+  // x は -1〜1 で、その高さで使える幅いっぱいに割り当てる。
+  const path: [number, number][] = [
+    [-0.90, 0.38], [-0.66, 0.12], [-0.78, -0.22], [-0.52, -0.46],
+    [-0.28, -0.28], [-0.40, 0.06], [-0.16, 0.26], [0.03, -0.04],
+    [-0.04, -0.44], [0.20, -0.60], [0.42, -0.38], [0.27, -0.06],
+    [0.45, 0.20], [0.68, 0.03], [0.80, -0.28], [0.94, 0.06],
+    [0.76, 0.42], [0.46, 0.52], [0.18, 0.40], [-0.08, 0.56],
+    [-0.38, 0.46],
+  ];
+  const cy = 372;
+  const hh = 118;
+  const margin = 30;
+  const pts: [number, number][] = path.map(([nx, ny]) => {
+    // 元の値は -0.6〜0.56 に収まっているので、上下いっぱいまで広げる
+    const y = cy + ny * 1.62 * hh;
     const e = edgesAt(y);
-    return { left: e.left + margin, right: e.right - margin };
-  };
+    const half = (e.right - e.left) / 2 - margin;
+    return [SIZE / 2 + nx * half, y];
+  });
 
-  const pts: [number, number][] = [];
-  /** 1 段ぶんの蛇行を積む。cols 本の縦棒を左右交互につなぐ */
-  const tier = (yTop: number, yBot: number, cols: number, toRight: boolean): void => {
-    const midY = (yTop + yBot) / 2;
-    const s = spanAt(midY);
-    for (let i = 0; i < cols; i += 1) {
-      const k = toRight ? i : cols - 1 - i;
-      const step = (s.right - s.left) / (cols - 1);
-      // 等間隔だと櫛に見えるので、左右にも振る
-      const x = s.left + step * k + (rnd() - 0.5) * step * 0.5;
-      // 折返しの深さも変えて、規則的に見えないようにする
-      const jitterT = yTop + rnd() * (yBot - yTop) * 0.34;
-      const jitterB = yBot - rnd() * (yBot - yTop) * 0.34;
-      const up = i % 2 === 0;
-      pts.push([x, up ? jitterB : jitterT]);
-      pts.push([x, up ? jitterT : jitterB]);
-    }
-  };
-
-  // 上の段：面が細いので本数を減らす。下の段：広いので多くする
-  tier(246, 332, 6, true);
-  tier(356, 480, 10, false);
-
+  // 折返しを鈍らせたくないので、点を必ず通る曲線でつなぐ
   const trace = (): void => {
     ctx.beginPath();
     ctx.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i += 1) ctx.lineTo(pts[i][0], pts[i][1]);
+    const at = (i: number): [number, number] =>
+      pts[Math.max(0, Math.min(pts.length - 1, i))];
+    for (let i = 0; i < pts.length - 1; i += 1) {
+      const p0 = at(i - 1);
+      const p1 = at(i);
+      const p2 = at(i + 1);
+      const p3 = at(i + 2);
+      ctx.bezierCurveTo(
+        p1[0] + (p2[0] - p0[0]) / 6,
+        p1[1] + (p2[1] - p0[1]) / 6,
+        p2[0] - (p3[0] - p1[0]) / 6,
+        p2[1] - (p3[1] - p1[1]) / 6,
+        p2[0],
+        p2[1],
+      );
+    }
   };
 
   ctx.lineCap = 'round';
@@ -770,7 +789,7 @@ function faceWire(ctx: Ctx, ink: string, lit: boolean): void {
     ctx.save();
     ctx.translate(5, 7);
     ctx.strokeStyle = 'rgba(70, 40, 6, 0.35)';
-    ctx.lineWidth = 16;
+    ctx.lineWidth = 18;
     trace();
     ctx.stroke();
     ctx.restore();
@@ -778,7 +797,7 @@ function faceWire(ctx: Ctx, ink: string, lit: boolean): void {
 
   // 丸棒
   ctx.strokeStyle = lit ? '#000' : C.groove;
-  ctx.lineWidth = 16;
+  ctx.lineWidth = 18;
   trace();
   ctx.stroke();
   // 上側のハイライトで丸みを出す
@@ -792,27 +811,34 @@ function faceWire(ctx: Ctx, ink: string, lit: boolean): void {
     ctx.restore();
   }
 
-  // 輪と紫のグリップ。経路の途中に通してある
-  const anchor = pts[Math.floor(pts.length * 0.55)];
-  const hx = anchor[0];
-  const hy = (anchor[1] + pts[Math.floor(pts.length * 0.55) + 1][1]) / 2;
+  // 輪と青い持ち手。実機は右下から黒いコードで垂れている
+  const hx = pts[16][0];
+  const hy = pts[16][1];
   ctx.strokeStyle = lit ? ink : '#d8d2c4';
   ctx.lineWidth = 6;
   ctx.beginPath();
   ctx.arc(hx, hy, 21, 0, Math.PI * 2);
   ctx.stroke();
+  // 金属の軸
+  ctx.strokeStyle = lit ? '#000' : '#b9bcc4';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(hx + 14, hy + 16);
+  ctx.lineTo(hx + 32, hy + 36);
+  ctx.stroke();
+  // 青いグリップ
   ctx.strokeStyle = lit ? '#000' : C.handle;
   ctx.lineWidth = 20;
   ctx.beginPath();
-  ctx.moveTo(hx + 15, hy + 17);
-  ctx.lineTo(hx + 54, hy + 62);
+  ctx.moveTo(hx + 32, hy + 36);
+  ctx.lineTo(hx + 62, hy + 70);
   ctx.stroke();
   // 黒いコード
-  ctx.strokeStyle = lit ? '#000' : 'rgba(20,20,20,0.8)';
+  ctx.strokeStyle = lit ? '#000' : 'rgba(20,20,20,0.85)';
   ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.moveTo(hx + 54, hy + 62);
-  ctx.quadraticCurveTo(hx + 26, hy + 104, cxOfCable(), SIZE - 22);
+  ctx.moveTo(hx + 62, hy + 70);
+  ctx.quadraticCurveTo(hx + 40, hy + 118, cxOfCable(), SIZE - 22);
   ctx.stroke();
 }
 
