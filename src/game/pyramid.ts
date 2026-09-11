@@ -39,11 +39,17 @@ export const FACE_COUNT = 4;
 const STEP = (Math.PI * 2) / FACE_COUNT;
 
 /** 手を離したあとの減衰。1 に近いほど長く回り続ける */
-const SPIN_DAMP = 0.962;
+const SPIN_DAMP = 0.9;
 /** 目盛りに吸い付く強さ */
-const SNAP_PULL = 9;
+const SNAP_PULL = 11;
 /** これ以下の速さになったら吸い付きを始める */
-const SNAP_ENTER = 1.4;
+const SNAP_ENTER = 2.2;
+/**
+ * 弾いたときの速さの上限 (rad/s)。
+ * ここが大きいと、軽く払っただけで何面も回り過ぎてしまう。
+ * 1 面 = 90 度なので、この値で「勢いよく弾いて 1〜2 面」に収まる。
+ */
+const MAX_FLING = 5;
 
 export interface PyramidOptions {
   /** 面が変わったときに呼ばれる */
@@ -83,6 +89,11 @@ export class PyramidView {
   /** カメラの引き具合。1 が標準、大きいほど遠い */
   private zoom = 1;
   private zoomTarget = 1;
+  /** カメラの高さ。0 で真横、大きいほど見下ろす */
+  private lift = 1;
+  private liftTarget = 1;
+  /** 寄り引きの追従の速さ。演出ごとに変える */
+  private camEase = 3.2;
 
   /** 選択の演出の進み具合 (0..1) */
   private pick = 0;
@@ -313,7 +324,7 @@ export class PyramidView {
 
     // 手を離してすぐ止まっていたら、そのまま吸い付かせる
     if (performance.now() - this.lastMoveAt > 90) this.spin = 0;
-    this.spin = Math.max(Math.min(this.spin, 14), -14);
+    this.spin = Math.max(Math.min(this.spin, MAX_FLING), -MAX_FLING);
   };
 
   // --- 外から動かす -----------------------------------------------------
@@ -353,6 +364,22 @@ export class PyramidView {
   /** カメラの引き具合。1 が標準 */
   setZoom(z: number): void {
     this.zoomTarget = z;
+  }
+
+  /**
+   * カメラの構図をまとめて指定する。
+   * ease は追従の速さで、小さいほどゆっくり動く。
+   */
+  setShot(opts: { zoom?: number; lift?: number; ease?: number }): void {
+    if (opts.zoom !== undefined) this.zoomTarget = opts.zoom;
+    if (opts.lift !== undefined) this.liftTarget = opts.lift;
+    if (opts.ease !== undefined) this.camEase = opts.ease;
+  }
+
+  /** 構図を即座に合わせる。演出の開始時に使う */
+  snapShot(opts: { zoom: number; lift: number }): void {
+    this.zoom = this.zoomTarget = opts.zoom;
+    this.lift = this.liftTarget = opts.lift;
   }
 
   /** 選択の演出を出すかどうか */
@@ -422,10 +449,12 @@ export class PyramidView {
     // ゆっくり上下に揺らして、置物らしさを出す
     this.pivot.position.y = Math.sin(t / 1400) * 0.02;
 
-    // カメラの寄り引き
-    this.zoom += (this.zoomTarget - this.zoom) * Math.min(dt * 3.2, 1);
+    // カメラの寄り引きと高さ
+    const k = Math.min(dt * this.camEase, 1);
+    this.zoom += (this.zoomTarget - this.zoom) * k;
+    this.lift += (this.liftTarget - this.lift) * k;
     const dist = 3.5 * this.zoom;
-    this.camera.position.set(0, 1.5 * this.zoom + 0.35, dist);
+    this.camera.position.set(0, 1.5 * this.lift + 0.35, dist);
     this.camera.lookAt(0, HEIGHT * 0.42, 0);
 
     // 選択の演出。正面の面だけ彫りが灯り、冠石が強く光る

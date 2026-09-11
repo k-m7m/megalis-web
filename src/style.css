@@ -996,39 +996,53 @@ h3 {
 }
 
 /* -------------------------------------------------------------------- */
-/* 試練のあいだの幕間                                                    */
+/* 試練に入る前のムービー                                                */
 /* -------------------------------------------------------------------- */
 
-.mg-transition-view {
+.mg-movie-view {
   gap: 1rem;
 }
 
-.mg-transition-caption {
+/* ピラミッドは画面いっぱいに見せる。演出中はこちらが主役 */
+.mg-movie-view .mg-pyramid3d {
+  max-width: 420px;
+  transition: filter 0.6s ease;
+}
+
+.mg-movie-view.is-revealed .mg-pyramid3d {
+  filter: drop-shadow(0 18px 40px rgba(252, 192, 156, 0.35));
+}
+
+/* 最後に面へ寄るとき、画面まわりを暗くして没入させる */
+.mg-movie-view.is-diving .mg-movie-caption,
+.mg-movie-view.is-diving .mg-btn {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+  pointer-events: none;
+}
+
+.mg-movie-caption {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
-  min-height: 3.6rem;
+  gap: 0.35rem;
+  min-height: 4rem;
 }
 
-.mg-transition-cleared {
+.mg-movie-line1 {
   font-family: var(--mg-font-heading);
   font-size: 1.15rem;
-  color: var(--mg-good);
-}
-
-.mg-transition-next {
-  font-size: 0.95rem;
   color: var(--mg-gold-soft);
-  min-height: 1.4em;
-  opacity: 0;
-  animation: mg-fade-in 0.6s ease forwards;
 }
 
-.mg-transition-view.is-pulled-back .mg-transition-next {
-  animation: mg-fade-in 0.6s ease 0.2s forwards;
+.mg-movie-line2 {
+  font-size: 1rem;
+  color: var(--mg-text-muted);
+  min-height: 1.5em;
 }
 
-@keyframes mg-fade-in {
-  to { opacity: 1; }
+.mg-movie-view.is-revealed .mg-movie-line2 {
+  color: var(--mg-amber);
+  font-weight: 700;
 }

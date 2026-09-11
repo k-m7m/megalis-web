@@ -354,29 +354,33 @@ export class MegalisApp {
   // ------------------------------------------------------------------
   private async startAdventure(difficulty: Difficulty): Promise<void> {
     let lives = MAX_LIVES;
+
     for (let i = 0; i < STAGES.length; i += 1) {
       const stage = STAGES[i];
-      const cleared = await new Promise<boolean>((resolve) => {
-        this.showStageIntro(stage, difficulty, () => {
-          this.clear();
-          const view = el('div', 'mg-view mg-play-view');
-          const hud = this.buildHud(stage, difficulty, lives, i + 1, STAGES.length);
-          const stageRoot = el('div', 'mg-stage-root');
-          view.append(hud.el, stageRoot);
-          this.root.append(view);
 
-          const host = this.buildHost(
-            difficulty,
-            hud,
-            () => lives,
-            (n) => {
-              lives = n;
-            },
-          );
-          const instance = stage.factory(stageRoot, host);
-          this.currentStage = instance;
-          void instance.run().then(resolve);
-        });
+      // どの試練に入るときも、必ずピラミッドが回って面を選ぶところを見せる。
+      // 1 つ目も同じ流れにすることで、始めた直後から演出が出る。
+      await this.playSelectionMovie(i === 0 ? null : STAGES[i - 1], stage);
+
+      const cleared = await new Promise<boolean>((resolve) => {
+        this.clear();
+        const view = el('div', 'mg-view mg-play-view');
+        const hud = this.buildHud(stage, difficulty, lives, i + 1, STAGES.length);
+        const stageRoot = el('div', 'mg-stage-root');
+        view.append(hud.el, stageRoot);
+        this.root.append(view);
+
+        const host = this.buildHost(
+          difficulty,
+          hud,
+          () => lives,
+          (n) => {
+            lives = n;
+          },
+        );
+        const instance = stage.factory(stageRoot, host);
+        this.currentStage = instance;
+        void instance.run().then(resolve);
       });
 
       if (!cleared) {
@@ -384,48 +388,57 @@ export class MegalisApp {
         this.showAdventureEnd(false, i + 1, difficulty);
         return;
       }
-
       this.audio.stageClear();
-      const isLast = i === STAGES.length - 1;
-      await this.showPyramidTransition(stage, isLast ? null : STAGES[i + 1]);
     }
+
     this.audio.fanfare();
     this.showAdventureEnd(true, STAGES.length, difficulty);
   }
 
   /**
-   * 試練を越えたあとの幕間。
+   * 試練に入る前のひとつながりの演出。
    *
-   * 画面が引いてピラミッドが現れ、勢いよく回って次の面が正面に来る。
-   * 回り終わったら彫りが灯り、寄って次の試練へ入る。
+   *   1. 直前の面に寄った状態から画面が引いて、ピラミッド全体が現れる
+   *   2. 勢いよく回り、慣性で次の面が正面に来る
+   *   3. その面の仕掛けに光が灯る
+   *   4. 面に寄っていき、そのまま試練へ入る
+   *
+   * from が null のときは最初の試練なので、引きの絵から始める。
    */
-  private async showPyramidTransition(
-    cleared: StageMeta,
-    next: StageMeta | null,
+  private async playSelectionMovie(
+    from: StageMeta | null,
+    to: StageMeta,
   ): Promise<void> {
     this.clear();
     const { PyramidView } = await this.loadPyramid();
-    const view = el('div', 'mg-view mg-transition-view');
 
-    const caption = el('div', 'mg-transition-caption');
+    const view = el('div', 'mg-view mg-movie-view');
+    const caption = el('div', 'mg-movie-caption');
     caption.innerHTML = `
-      <span class="mg-transition-cleared">「${cleared.title}」を突破</span>
-      <span class="mg-transition-next"></span>`;
-    const nextEl = caption.querySelector('.mg-transition-next') as HTMLElement;
+      <span class="mg-movie-line1"></span>
+      <span class="mg-movie-line2"></span>`;
+    const line1 = caption.querySelector('.mg-movie-line1') as HTMLElement;
+    const line2 = caption.querySelector('.mg-movie-line2') as HTMLElement;
 
     const pyramid = new PyramidView();
     this.pyramid = pyramid;
     pyramid.setInteractive(false);
-    pyramid.snapTo(cleared.no - 1);
-    pyramid.setPicked(true);
-    // まずは寄った状態から始めて、そこから引く
-    pyramid.setZoom(0.55);
+    pyramid.snapTo(from ? from.no - 1 : to.no - 1);
 
-    const skip = el('button', 'mg-btn mg-btn--ghost', '見送る');
+    const skip = el('button', 'mg-btn mg-btn--ghost', '演出を飛ばす');
     skip.type = 'button';
-
     view.append(pyramid.el, caption, skip);
     this.root.append(view);
+
+    if (from) {
+      line1.textContent = `「${from.title}」を突破`;
+      pyramid.snapShot({ zoom: 0.55, lift: 0.55 });
+      pyramid.setPicked(true);
+    } else {
+      line1.textContent = '迷宮が目を覚ます';
+      pyramid.snapShot({ zoom: 1.9, lift: 1.8 });
+      pyramid.setPicked(false);
+    }
 
     return new Promise<void>((resolve) => {
       const timers: number[] = [];
@@ -436,63 +449,51 @@ export class MegalisApp {
         for (const t of timers) window.clearTimeout(t);
         resolve();
       };
+      const at = (ms: number, fn: () => void) => {
+        timers.push(window.setTimeout(fn, ms));
+      };
+
+      // 1. 引いて全体を見せる
+      at(from ? 500 : 200, () => {
+        pyramid.setPicked(false);
+        pyramid.setShot({ zoom: 1.35, lift: 1.25, ease: 2.2 });
+        view.classList.add('is-wide');
+      });
+
+      // 2. 回す。目的の面へ勢いよく送る
+      at(from ? 1400 : 1100, () => {
+        this.audio.launch();
+        line2.textContent = '石が動く';
+        pyramid.spinTo(to.no - 1, from ? 1 : 0);
+      });
+
+      // 3. 止まったら灯す
+      at(from ? 1550 : 1250, () => {
+        void pyramid.waitSettled().then(() => {
+          if (done) return;
+          line1.textContent = `第${to.no}の試練`;
+          line2.textContent = to.title;
+          pyramid.setPicked(true);
+          this.audio.stoneGlow();
+          view.classList.add('is-revealed');
+
+          // 4. 面に寄って、そのまま試練へ
+          at(900, () => {
+            pyramid.setShot({ zoom: 0.42, lift: 0.5, ease: 1.6 });
+            this.audio.correct();
+            view.classList.add('is-diving');
+          });
+          at(2100, finish);
+        });
+      });
+
       skip.addEventListener('click', () => {
         this.audio.uiClick();
         finish();
       });
 
       // 演出のどこかで止まっても冒険が止まらないよう、全体にも上限を置く
-      timers.push(window.setTimeout(finish, 9000));
-
-      // 1. 画面が引いてピラミッド全体が見える
-      timers.push(
-        window.setTimeout(() => {
-          pyramid.setPicked(false);
-          pyramid.setZoom(1.25);
-          view.classList.add('is-pulled-back');
-        }, 420),
-      );
-
-      if (!next) {
-        // 最後の試練のあとは、そのまま最奥へ
-        nextEl.textContent = '迷宮の最奥へ';
-        timers.push(
-          window.setTimeout(() => {
-            pyramid.setPicked(true);
-            pyramid.setZoom(0.5);
-            this.audio.correct();
-          }, 1500),
-        );
-        timers.push(window.setTimeout(finish, 2600));
-        return;
-      }
-
-      // 2. 勢いをつけて次の面まで回す。慣性で行き過ぎてから吸い付く
-      timers.push(
-        window.setTimeout(() => {
-          this.audio.launch();
-          pyramid.spinTo(next.no - 1, 1);
-        }, 1250),
-      );
-
-      // 3. 回り終わったら彫りが灯り、寄って次へ
-      timers.push(
-        window.setTimeout(() => {
-          void pyramid.waitSettled().then(() => {
-            if (done) return;
-            nextEl.textContent = `次は「${next.title}」`;
-            pyramid.setPicked(true);
-            this.audio.stoneGlow();
-            timers.push(
-              window.setTimeout(() => {
-                pyramid.setZoom(0.55);
-                this.audio.correct();
-              }, 700),
-            );
-            timers.push(window.setTimeout(finish, 1700));
-          });
-        }, 1400),
-      );
+      at(11000, finish);
     });
   }
 
