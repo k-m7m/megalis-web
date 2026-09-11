@@ -26,8 +26,9 @@ const C = {
   edgeLit: 'rgba(255, 226, 168, 0.34)',
   /** 円盤の青。実機は明るめのロイヤルブルー */
   blue: '#2f3f9e',
-  /** 円盤に並ぶ金の文字 */
-  gold: '#c9a227',
+  /** 円盤の浮き彫り。同じ青の明暗で表す */
+  blueRaised: '#4a5cc8',
+  blueSunk: '#1c2668',
   /** 銘板の銀 */
   silver: '#c8ccd4',
   blueLit: '#4a5cb8',
@@ -44,15 +45,15 @@ const C = {
   /** 紫の持ち手 */
   handle: '#5a4ab0',
   /** 光る板 */
-  lampOff: '#cfc4b0',
+  lampOff: '#8fa3a8',
   /** 操作ボタン。実機は濃紺 */
   button: '#3b3ba8',
   /** 銘板の濃い青 */
   plateBlue: '#1b2890',
-  /** 液晶のアンバー */
-  lcd: '#c8a24a',
-  /** 祭室の奥。実機は暗い穴ではなく明るい */
-  chamber: '#e0b374',
+  /** 液晶のアンバー。実機は暗めの琥珀 */
+  lcd: '#9d7a2a',
+  /** 祭室の奥。枠より一段暗く落として奥行きを出す */
+  chamber: '#6b5a3a',
 };
 
 export interface FaceArt {
@@ -239,8 +240,9 @@ function drawControlPanel(ctx: Ctx, lit: boolean, ink: string): void {
 
 /** 面4 のスコア窓。実機はアンバーの横長液晶 */
 function drawScoreWindow(ctx: Ctx, lit: boolean): void {
-  const w = 116;
-  const h = 46;
+  // 実機は横縦比 2.2:1 ほどの横長窓
+  const w = 112;
+  const h = 51;
   const x = SIZE / 2 - w / 2;
   const y = 196;
   ctx.fillStyle = lit ? '#000' : C.bodyDark;
@@ -249,9 +251,9 @@ function drawScoreWindow(ctx: Ctx, lit: boolean): void {
   ctx.fillStyle = lit ? '#000' : C.lcd;
   roundRect(ctx, x, y, w, h, 3);
   ctx.fill();
-  // 表示の桁
-  ctx.fillStyle = lit ? '#000' : 'rgba(60, 40, 6, 0.55)';
-  for (let i = 0; i < 3; i += 1) ctx.fillRect(x + 20 + i * 28, y + 14, 16, 20);
+  // 液晶らしく、うっすら桁の影を落とす
+  ctx.fillStyle = lit ? '#000' : 'rgba(50, 38, 8, 0.35)';
+  for (let i = 0; i < 4; i += 1) ctx.fillRect(x + 14 + i * 24, y + 12, 13, 22);
 }
 
 /**
@@ -302,36 +304,39 @@ function faceDial(ctx: Ctx, ink: string, lit: boolean): void {
     // 立ち姿
     (x, y, k) => { ctx.beginPath(); ctx.arc(x, y - 7*k, 3*k, 0, Math.PI*2); ctx.fill(); ctx.fillRect(x - 3*k, y - 3*k, 6*k, 8*k); ctx.fillRect(x - 3*k, y + 5*k, 2.5*k, 6*k); ctx.fillRect(x + 0.5*k, y + 5*k, 2.5*k, 6*k); },
   ];
-  // 外周に 16 個、内側に 8 個。実機は金の文字がぎっしり並ぶ
-  for (let i = 0; i < 16; i += 1) {
-    const a = (i / 16) * Math.PI * 2 - Math.PI / 2;
-    ctx.fillStyle = lit ? ink : C.gold;
-    glyphs[i % glyphs.length](
-      cx + Math.cos(a) * r * 0.84,
-      cy + Math.sin(a) * r * 0.84,
-      0.62,
-    );
+  // 実機の円盤に金色は無い。同じ青の濃淡だけで浮き彫りを表す。
+  // 大きな獣のレリーフが 6 個と、外周を巡る小さな文字。
+  for (let i = 0; i < 6; i += 1) {
+    const a = (i / 6) * Math.PI * 2 - Math.PI / 2 + 0.15;
+    const gx = cx + Math.cos(a) * r * 0.6;
+    const gy = cy + Math.sin(a) * r * 0.6;
+    ctx.fillStyle = lit ? ink : C.blueRaised;
+    glyphs[i % glyphs.length](gx, gy, 1.15);
+    if (!lit) {
+      ctx.fillStyle = C.blueSunk;
+      glyphs[i % glyphs.length](gx + 1.5, gy + 2, 1.15);
+    }
   }
-  for (let i = 0; i < 8; i += 1) {
-    const a = (i / 8) * Math.PI * 2 - Math.PI / 2 + 0.2;
-    ctx.fillStyle = lit ? ink : C.gold;
-    glyphs[(i + 1) % glyphs.length](
-      cx + Math.cos(a) * r * 0.58,
-      cy + Math.sin(a) * r * 0.58,
-      0.9,
-    );
+  // 外周を巡る小さな文字。上側の弧だけに並ぶ
+  for (let i = 0; i < 30; i += 1) {
+    const a = -Math.PI * 1.18 + (i / 29) * Math.PI * 1.36;
+    const gx = cx + Math.cos(a) * r * 0.88;
+    const gy = cy + Math.sin(a) * r * 0.88;
+    ctx.fillStyle = lit ? ink : C.blueRaised;
+    ctx.fillRect(gx - 2.5, gy - 5, 5, 10);
+    if (i % 3 === 0) ctx.fillRect(gx - 5, gy + 6, 10, 3);
   }
-  // 円盤外周の金の細リング
-  ctx.strokeStyle = lit ? '#000' : C.gold;
-  ctx.lineWidth = 4;
+  // 大レリーフをつなぐ弓なりの稜線
+  ctx.strokeStyle = lit ? '#000' : C.blueRaised;
+  ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.arc(cx, cy, r - 5, 0, Math.PI * 2);
+  ctx.arc(cx, cy, r * 0.6, Math.PI * 0.1, Math.PI * 0.9);
   ctx.stroke();
 
   // 中心の円筒つまみ。
   // 実機は円盤の 1/3 ほどの径で、径の半分ぐらい手前に突き出ている。
   // 溝は側面だけに入れること。上面まで伸ばすと目盛りに見えてしまう。
-  const kr = r * 0.33;
+  const kr = r * 0.29;
   const lift = kr * 0.45;
 
   // 落ち影
@@ -469,85 +474,99 @@ function faceSpiral(ctx: Ctx, ink: string, lit: boolean): void {
 
 /**
  * 面3 封印の扉。
- * 奥まった暗い祭室にマットな青灰色の板が並び、中央に座像が彫られている。
- * 実機の板は光らないので、発光用の絵でもここは灯さない。
+ * 実機は深く落ち込んだ開口で、奥壁は枠よりはっきり暗い。
+ * 中央下にネメス頭巾のファラオ胸像が立ち、その下に幅広の階段が降りる。
+ * 左右の柱には立像が 1 体ずつ。丸い青灰色のレンズが像を挟んで並ぶ。
  */
 function faceDoor(ctx: Ctx, _ink: string, lit: boolean): void {
-
   const cx = SIZE / 2;
-  const top = 252;
-  const w = 260;
-  const h = 218;
+  const top = 250;
+  const w = 268;
+  const h = 214;
   const x = cx - w / 2;
 
-  // 枠とまぐさ石
+  // 段状の金枠
   ctx.fillStyle = lit ? '#000' : C.bodyDark;
-  roundRect(ctx, x - 14, top - 14, w + 28, h + 28, 6);
+  roundRect(ctx, x - 20, top - 20, w + 40, h + 40, 5);
   ctx.fill();
   ctx.fillStyle = lit ? '#000' : C.bodyLit;
-  ctx.fillRect(x - 24, top - 36, w + 48, 24);
+  roundRect(ctx, x - 12, top - 12, w + 24, h + 24, 4);
+  ctx.fill();
+  ctx.fillStyle = lit ? '#000' : C.bodyHi;
+  ctx.fillRect(x - 26, top - 40, w + 52, 22);
 
-  // 奥の空間
+  // 奥壁。枠より暗くして凹みを出す
   ctx.fillStyle = lit ? '#000' : C.chamber;
   ctx.fillRect(x, top, w, h);
+  // 開口上辺の接触影
+  const sh = ctx.createLinearGradient(0, top, 0, top + h * 0.12);
+  sh.addColorStop(0, lit ? '#000' : 'rgba(0,0,0,0.55)');
+  sh.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = sh;
+  ctx.fillRect(x, top, w, h * 0.12);
 
-  // 光る板。中央の像を囲むように並べる
-  const cell = 40;
-  const gap = 6;
-  const slots: [number, number][] = [];
-  for (let col = 0; col < 5; col += 1) {
-    slots.push([col, 0]);
-    slots.push([col, 3]);
-  }
-  for (const row of [1, 2]) {
-    slots.push([0, row]);
-    slots.push([4, row]);
-  }
-  const gx = x + (w - (cell * 5 + gap * 4)) / 2;
-  const gy = top + 12;
-  for (const [col, row] of slots) {
-    // 実機の板はマットで光らないので、発光用でも灯さない
-    ctx.fillStyle = lit ? '#000' : C.lampOff;
-    const sx = gx + col * (cell + gap);
-    const sy = gy + row * (cell + gap);
-    roundRect(ctx, sx, sy, cell, cell, 3);
-    ctx.fill();
-    // 板に刻まれた記号
-    if (!lit) {
-      ctx.fillStyle = 'rgba(40, 52, 60, 0.55)';
-      ctx.fillRect(sx + 10, sy + 8, cell - 20, 4);
-      ctx.fillRect(sx + 13, sy + 17, cell - 26, 4);
-      ctx.fillRect(sx + 10, sy + 26, cell - 20, 4);
+  // 丸いレンズ。像を挟んで左右に 2 列 x 3 段
+  const lr = w / 18;
+  for (const side of [-1, 1]) {
+    for (let col = 0; col < 2; col += 1) {
+      for (let row = 0; row < 3; row += 1) {
+        const lx = cx + side * (w * 0.18 + col * lr * 2.6);
+        const ly = top + 42 + row * lr * 2.9;
+        ctx.fillStyle = lit ? '#000' : C.lampOff;
+        ctx.beginPath();
+        ctx.arc(lx, ly, lr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = lit ? '#000' : 'rgba(40, 52, 60, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
     }
   }
 
-  // 中央のファラオ像
-  const fx = cx;
-  const fy = top + 74;
-  ctx.fillStyle = lit ? '#000' : C.bodyLit;
+  // 中央のファラオ胸像
+  const fy = top + h * 0.3;
+  const fw = w * 0.18;
+  ctx.fillStyle = lit ? '#000' : '#d9a23f';
   // ネメス頭巾
   ctx.beginPath();
-  ctx.moveTo(fx - 26, fy + 6);
-  ctx.quadraticCurveTo(fx - 26, fy - 26, fx, fy - 26);
-  ctx.quadraticCurveTo(fx + 26, fy - 26, fx + 26, fy + 6);
-  ctx.lineTo(fx + 32, fy + 42);
-  ctx.lineTo(fx - 32, fy + 42);
+  ctx.moveTo(cx - fw * 0.8, fy + fw * 0.3);
+  ctx.quadraticCurveTo(cx - fw * 0.8, fy - fw * 0.8, cx, fy - fw * 0.8);
+  ctx.quadraticCurveTo(cx + fw * 0.8, fy - fw * 0.8, cx + fw * 0.8, fy + fw * 0.3);
+  ctx.lineTo(cx + fw, fy + fw * 1.5);
+  ctx.lineTo(cx - fw, fy + fw * 1.5);
   ctx.closePath();
   ctx.fill();
   // 顔
-  ctx.fillStyle = lit ? '#000' : C.body;
-  roundRect(ctx, fx - 15, fy - 8, 30, 34, 8);
+  ctx.fillStyle = lit ? '#000' : '#e8bd6c';
+  roundRect(ctx, cx - fw * 0.45, fy - fw * 0.25, fw * 0.9, fw * 1.15, fw * 0.25);
   ctx.fill();
-  // 胸と腕
-  ctx.fillStyle = lit ? '#000' : C.bodyLit;
-  roundRect(ctx, fx - 38, fy + 42, 76, 44, 6);
+  // 胸飾りと胴
+  ctx.fillStyle = lit ? '#000' : '#d9a23f';
+  roundRect(ctx, cx - fw * 1.15, fy + fw * 1.5, fw * 2.3, fw * 1.5, 4);
   ctx.fill();
-  // 膝から下
-  roundRect(ctx, fx - 30, fy + 86, 60, 32, 5);
-  ctx.fill();
-  // つけひげ
-  ctx.fillStyle = lit ? '#000' : C.bodyDark;
-  ctx.fillRect(fx - 5, fy + 24, 10, 20);
+
+  // 像の下の幅広い階段
+  const stW = w * 0.42;
+  for (let i = 0; i < 5; i += 1) {
+    const sw = stW + i * (w * 0.06);
+    const sy = top + h - 8 - (4 - i) * 13;
+    ctx.fillStyle = lit ? '#000' : (i % 2 ? '#c08a42' : '#d09a4e');
+    ctx.fillRect(cx - sw / 2, sy, sw, 13);
+  }
+
+  // 左右の柱に立つ像
+  for (const side of [-1, 1]) {
+    const px = cx + side * (w * 0.44);
+    const py = top + h * 0.18;
+    const ph = h * 0.7;
+    ctx.fillStyle = lit ? '#000' : '#c89a58';
+    ctx.beginPath();
+    ctx.arc(px, py, ph * 0.09, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(px - ph * 0.1, py + ph * 0.08, ph * 0.2, ph * 0.42);
+    ctx.fillRect(px - ph * 0.1, py + ph * 0.5, ph * 0.08, ph * 0.4);
+    ctx.fillRect(px + ph * 0.02, py + ph * 0.5, ph * 0.08, ph * 0.4);
+  }
 }
 
 /**
@@ -564,11 +583,14 @@ function faceWire(ctx: Ctx, ink: string, lit: boolean): void {
   const h = 220;
 
   // 曲線の経路。折れではなく滑らかにつなぐ
+  // 実機は U 字の折返しが 15 回ほど続く密な蛇行
   const pts: [number, number][] = [
-    [-0.96, 0.78], [-0.80, 0.10], [-0.92, -0.48], [-0.55, -0.72],
-    [-0.30, -0.30], [-0.48, 0.24], [-0.10, 0.52], [0.18, 0.06],
-    [0.02, -0.52], [0.38, -0.78], [0.66, -0.40], [0.48, 0.14],
-    [0.76, 0.52], [0.96, 0.10],
+    [-0.97, 0.80], [-0.88, 0.16], [-0.97, -0.40], [-0.74, -0.78],
+    [-0.56, -0.36], [-0.66, 0.22], [-0.44, 0.70], [-0.26, 0.20],
+    [-0.36, -0.40], [-0.16, -0.80], [0.04, -0.36], [-0.06, 0.24],
+    [0.14, 0.72], [0.32, 0.24], [0.22, -0.36], [0.42, -0.80],
+    [0.62, -0.40], [0.52, 0.20], [0.72, 0.66], [0.90, 0.20],
+    [0.97, -0.30],
   ];
   const trace = () => {
     ctx.beginPath();
@@ -595,7 +617,7 @@ function faceWire(ctx: Ctx, ink: string, lit: boolean): void {
     ctx.save();
     ctx.translate(5, 7);
     ctx.strokeStyle = 'rgba(70, 40, 6, 0.35)';
-    ctx.lineWidth = 15;
+    ctx.lineWidth = 11;
     trace();
     ctx.stroke();
     ctx.restore();
@@ -603,7 +625,7 @@ function faceWire(ctx: Ctx, ink: string, lit: boolean): void {
 
   // 丸棒
   ctx.strokeStyle = lit ? '#000' : C.groove;
-  ctx.lineWidth = 15;
+  ctx.lineWidth = 11;
   trace();
   ctx.stroke();
   // 上側のハイライトで丸みを出す
@@ -661,27 +683,34 @@ export function buildFaceArt(index: number): FaceArt {
 
   // --- 凹凸。黒いほど凹んで見える ---
   const { cv: bump, ctx: b } = newCanvas();
+  // 実機の斜面は一枚の平滑な面。
+  // ここに横線を並べると段積みに見えてしまうので、凹凸にも入れない。
   b.fillStyle = '#909090';
   b.fillRect(0, 0, SIZE, SIZE);
   {
-    const courses = 20;
-    for (let i = 1; i < courses; i += 1) {
-      const y = (i / courses) * SIZE;
-      b.strokeStyle = '#2a2a2a';
-      b.lineWidth = 4;
-      b.beginPath();
-      b.moveTo(0, y);
-      b.lineTo(SIZE, y);
-      b.stroke();
-      b.strokeStyle = '#d8d8d8';
-      b.lineWidth = 3;
-      b.beginPath();
-      b.moveTo(0, y + 4);
-      b.lineTo(SIZE, y + 4);
-      b.stroke();
-    }
+    // 外周の額縁だけを立ち上げる
+    b.save();
+    faceTriangle(b);
+    b.clip();
+    b.strokeStyle = '#d0d0d0';
+    b.lineWidth = 14;
+    b.beginPath();
+    b.moveTo(SIZE / 2, 57);
+    b.lineTo(SIZE - 30, SIZE - 30);
+    b.lineTo(30, SIZE - 30);
+    b.closePath();
+    b.stroke();
+    b.strokeStyle = '#3a3a3a';
+    b.lineWidth = 4;
+    b.beginPath();
+    b.moveTo(SIZE / 2, 65);
+    b.lineTo(SIZE - 38, SIZE - 36);
+    b.lineTo(38, SIZE - 36);
+    b.closePath();
+    b.stroke();
+    b.restore();
   }
-  drawEdgePilasters(b, '#303030', '#d8d8d8');
+  drawEdgePilasters(b, '#404040', '#c8c8c8');
   drawFaceContent(b, index, '#202020', false);
 
   // --- 発光。仕掛けの要所だけ灯す ---
