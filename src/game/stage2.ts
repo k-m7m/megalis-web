@@ -394,15 +394,27 @@ export const createStage2: StageFactory = (
 
   /** 実機と同じ、渦巻きが彫られた青い円盤 */
   function drawDisc(): void {
-    // 盤の座
+    // 盤を囲む岩。実機は割れた砂岩が不揃いに縁取る
+    ctx.fillStyle = '#c08a3e';
+    ctx.beginPath();
+    for (let i = 0; i <= 72; i += 1) {
+      const a = (i / 72) * Math.PI * 2;
+      const rr = R_OUTER + 24 + Math.sin(i * 2.7) * 4 + Math.cos(i * 1.3) * 3;
+      const x = CX + Math.cos(a) * rr;
+      const y = CY + Math.sin(a) * rr;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
     ctx.fillStyle = '#8a5e1c';
     ctx.beginPath();
-    ctx.arc(CX, CY, R_OUTER + 20, 0, Math.PI * 2);
+    ctx.arc(CX, CY, R_OUTER + 17, 0, Math.PI * 2);
     ctx.fill();
 
     const g = ctx.createRadialGradient(CX - 40, CY - 50, 20, CX, CY, R_OUTER + 14);
-    g.addColorStop(0, '#3a4ea8');
-    g.addColorStop(1, '#1d2a70');
+    g.addColorStop(0, '#4a5ecc');
+    g.addColorStop(1, '#2b3a9c');
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(CX, CY, R_OUTER + 14, 0, Math.PI * 2);
@@ -421,9 +433,11 @@ export const createStage2: StageFactory = (
     ctx.lineJoin = 'round';
 
     drawDisc();
-    // 彫り込まれた溝。暗い青の谷に明るい縁が立つ
-    strokeSpiral('#16215c', 22);
-    strokeSpiral('rgba(130, 150, 230, 0.45)', 2.5);
+    // 実機は「太い青い壁のあいだに細い溝」。
+    // 溝の縁に光を回してから、暗い谷と少し明るい底を重ねる。
+    strokeSpiral('rgba(150, 170, 245, 0.5)', 19);
+    strokeSpiral('#0d1340', 15);
+    strokeSpiral('#18215e', 9);
     drawSnakeMouth();
     drawHoles();
     drawEntrance();

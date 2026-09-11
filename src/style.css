@@ -510,13 +510,31 @@ h3 {
 }
 
 .mg-dial-rim {
-  fill: #2a1b0f;
-  stroke: var(--mg-panel-border);
+  /* 円盤を囲む石のカラー。実機はここが本体と同じ砂岩色 */
+  fill: #c08a3e;
+  stroke: #7a4d14;
   stroke-width: 3;
 }
 
+.mg-dial-rim-inner {
+  fill: #8a5e1c;
+}
+
+/* 円盤の地の文様。実機は地と同じ青の浮き彫り */
+.mg-dial-relief rect {
+  fill: #4a5cc8;
+  opacity: 0.55;
+}
+
+.mg-dial-relief-ring {
+  fill: none;
+  stroke: #4a5cc8;
+  stroke-width: 3;
+  opacity: 0.4;
+}
+
 .mg-dial-plate {
-  fill: #35459e;
+  fill: #31409c;
   stroke: rgba(190, 175, 230, 0.28);
   stroke-width: 1.5;
 }
@@ -549,16 +567,28 @@ h3 {
   filter: drop-shadow(0 0 6px var(--beast-color));
 }
 
-/* 中央のつまみ */
+/* 中央のつまみ。側面が見える円筒として描く */
+.mg-dial-knob-side {
+  fill: #b0744c;
+  stroke: #6f3d12;
+  stroke-width: 2;
+}
+
 .mg-dial-knob {
-  fill: #c08850;
-  stroke: #7a4418;
-  stroke-width: 3;
+  fill: #d99b78;
+  stroke: #8a4f1c;
+  stroke-width: 2;
+}
+
+.mg-dial-knob-top {
+  fill: none;
+  stroke: rgba(110, 58, 20, 0.35);
+  stroke-width: 2;
 }
 
 .mg-dial-grip line {
-  stroke: rgba(0, 0, 0, 0.35);
-  stroke-width: 2.5;
+  stroke: rgba(90, 44, 10, 0.6);
+  stroke-width: 2;
   stroke-linecap: round;
 }
 
@@ -668,7 +698,7 @@ h3 {
 }
 
 .mg-lintel {
-  fill: #b87848;
+  fill: #c08a3e;
   stroke: rgba(0, 0, 0, 0.35);
   stroke-width: 1.5;
 }
@@ -686,7 +716,7 @@ h3 {
 }
 
 .mg-plinth {
-  fill: #9c6236;
+  fill: #a87434;
   stroke: rgba(0, 0, 0, 0.3);
   stroke-width: 1.5;
 }
@@ -694,7 +724,7 @@ h3 {
 /* 守護者の浮き彫り */
 .mg-relief path,
 .mg-relief circle {
-  fill: #e0a874;
+  fill: #dcae6e;
   stroke: rgba(0, 0, 0, 0.55);
   stroke-width: 0.9;
   stroke-linejoin: round;
@@ -749,14 +779,15 @@ h3 {
 }
 
 .mg-slab-face {
-  fill: #2f2b45;
-  stroke: rgba(190, 175, 230, 0.22);
+  /* 実機の石板は青灰色のスレート */
+  fill: #616e7e;
+  stroke: rgba(18, 26, 38, 0.55);
   stroke-width: 1.5;
   transition: fill 0.12s ease, stroke 0.12s ease;
 }
 
 .mg-slab-glyph {
-  color: rgba(190, 175, 230, 0.4);
+  color: rgba(18, 26, 38, 0.55);
   transition: color 0.12s ease;
   pointer-events: none;
 }

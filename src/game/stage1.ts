@@ -97,9 +97,19 @@ export const createStage1: StageFactory = (
   dialWrap.innerHTML = `
     <div class="mg-dial-marker" aria-hidden="true"></div>
     <svg class="mg-dial" viewBox="0 0 240 240" role="group" aria-label="守護獣を選ぶダイヤル">
-      <circle class="mg-dial-rim" cx="120" cy="120" r="116" />
+      <circle class="mg-dial-rim" cx="120" cy="120" r="118" />
+      <circle class="mg-dial-rim-inner" cx="120" cy="120" r="110" />
       <g class="mg-dial-face">
-        <circle class="mg-dial-plate" cx="120" cy="120" r="108" />
+        <circle class="mg-dial-plate" cx="120" cy="120" r="106" />
+        <g class="mg-dial-relief" aria-hidden="true">
+          ${Array.from({ length: 36 }, (_, i) => {
+            const a = (i / 36) * Math.PI * 2;
+            const x = 120 + Math.cos(a) * 96;
+            const y = 120 + Math.sin(a) * 96;
+            return `<rect x="${(x - 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" width="4" height="8" rx="1" transform="rotate(${((a * 180) / Math.PI + 90).toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)})" />`;
+          }).join('')}
+          <circle class="mg-dial-relief-ring" cx="120" cy="120" r="84" />
+        </g>
         ${BEASTS.map((beast, i) => {
           const angle = i * STEP;
           return `
@@ -114,17 +124,19 @@ export const createStage1: StageFactory = (
             </g>`;
         }).join('')}
       </g>
-      <circle class="mg-dial-knob" cx="120" cy="120" r="42" />
+      <circle class="mg-dial-knob-side" cx="120" cy="120" r="40" />
       <g class="mg-dial-grip">
-        ${Array.from({ length: 12 }, (_, i) => {
-          const a = (i / 12) * Math.PI * 2;
+        ${Array.from({ length: 40 }, (_, i) => {
+          const a = (i / 40) * Math.PI * 2;
           const x1 = 120 + Math.cos(a) * 34;
           const y1 = 120 + Math.sin(a) * 34;
-          const x2 = 120 + Math.cos(a) * 41;
-          const y2 = 120 + Math.sin(a) * 41;
+          const x2 = 120 + Math.cos(a) * 40;
+          const y2 = 120 + Math.sin(a) * 40;
           return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" />`;
         }).join('')}
       </g>
+      <circle class="mg-dial-knob" cx="120" cy="120" r="34" />
+      <circle class="mg-dial-knob-top" cx="120" cy="120" r="18" />
     </svg>
   `;
 

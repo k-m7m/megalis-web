@@ -326,34 +326,46 @@ export const createStage4: StageFactory = (
 
     ctx.clearRect(-8, -8, W + 16, H + 16);
 
-    // 台座の石壁
-    ctx.fillStyle = '#8d5828';
+    // 台座。実機の斜面は目地の無い平らな砂岩なので、横線は引かない
+    ctx.fillStyle = '#c08a3e';
     ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = 'rgba(0,0,0,0.14)';
-    ctx.lineWidth = 1;
-    for (let y = 24; y < H; y += 24) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(W, y);
-      ctx.stroke();
-    }
+    ctx.strokeStyle = 'rgba(255, 226, 168, 0.25)';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(6, 6, W - 12, H - 12);
+    ctx.strokeStyle = 'rgba(96, 58, 10, 0.28)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(12, 12, W - 24, H - 24);
 
-    // 針金。実機と同じく黒く細い
+    const tracePath = (): void => {
+      ctx.beginPath();
+      ctx.moveTo(corners[0].x, corners[0].y);
+      for (let i = 1; i < corners.length; i += 1) ctx.lineTo(corners[i].x, corners[i].y);
+    };
+
+    // 針金。実機は黒い丸棒が素地から浮いていて、落ち影が出る
     ctx.lineCap = 'round';
-    ctx.lineJoin = 'miter';
+    ctx.lineJoin = 'round';
+    ctx.save();
+    ctx.translate(3, 4);
+    ctx.strokeStyle = 'rgba(70, 40, 6, 0.38)';
+    ctx.lineWidth = WIRE_R * 2 + 2;
+    tracePath();
+    ctx.stroke();
+    ctx.restore();
+
     ctx.strokeStyle = '#0c0c0c';
     ctx.lineWidth = WIRE_R * 2 + 2;
-    ctx.beginPath();
-    ctx.moveTo(corners[0].x, corners[0].y);
-    for (let i = 1; i < corners.length; i += 1) ctx.lineTo(corners[i].x, corners[i].y);
+    tracePath();
     ctx.stroke();
 
-    ctx.strokeStyle = '#3a3a3e';
-    ctx.lineWidth = WIRE_R * 2 - 1;
-    ctx.beginPath();
-    ctx.moveTo(corners[0].x, corners[0].y);
-    for (let i = 1; i < corners.length; i += 1) ctx.lineTo(corners[i].x, corners[i].y);
+    // 棒の上側の光。丸みを出す
+    ctx.save();
+    ctx.translate(-0.8, -1.2);
+    ctx.strokeStyle = 'rgba(160, 160, 168, 0.55)';
+    ctx.lineWidth = Math.max(1.2, WIRE_R * 0.8);
+    tracePath();
     ctx.stroke();
+    ctx.restore();
 
     drawPost(start, '#5ec27a');
     drawPost(goal, '#ffcf8a');
