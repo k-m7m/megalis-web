@@ -51,6 +51,42 @@ interface Point {
  * 針金の形を作る。実機と同じく直線をつないだ角ばった形にする。
  * 左から右へ進みながら、上下に大きく振る。
  */
+/**
+ * 角を通る曲線で折れ線をなめらかにする。
+ * 点を必ず通る Catmull-Rom を使い、行き過ぎた分は盤の中に収める。
+ */
+function smoothCorners(src: Point[]): Point[] {
+  const out: Point[] = [];
+  const at = (i: number): Point => src[Math.max(0, Math.min(src.length - 1, i))];
+  const PER = 6;
+  for (let i = 0; i < src.length - 1; i += 1) {
+    const p0 = at(i - 1);
+    const p1 = at(i);
+    const p2 = at(i + 1);
+    const p3 = at(i + 2);
+    for (let k = 0; k < PER; k += 1) {
+      const t = k / PER;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const x =
+        0.5 *
+        (2 * p1.x +
+          (-p0.x + p2.x) * t +
+          (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
+          (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
+      const y =
+        0.5 *
+        (2 * p1.y +
+          (-p0.y + p2.y) * t +
+          (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
+          (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
+      out.push({ x: clamp(x, 14, W - 14), y: clamp(y, 14, H - 14) });
+    }
+  }
+  out.push(src[src.length - 1]);
+  return out;
+}
+
 function buildWire(bends: number): Point[] {
   const pts: Point[] = [];
   const marginX = 26;
@@ -126,7 +162,10 @@ export const createStage4: StageFactory = (
   const ctx = fitCanvas(canvas, W, H);
 
   // --- 針金を折れ線として持ち、始点からの距離を引けるようにする ----------
-  const corners = buildWire(params.bends);
+  const rawCorners = buildWire(params.bends);
+  // 実機の針金は直角ではなく、丸く曲がりながら這っている。
+  // 角を通る曲線に置き換える。当たり判定もこの形をそのまま使う。
+  const corners = smoothCorners(rawCorners);
   const pts: Point[] = [];
   const cum: number[] = [];
   {
