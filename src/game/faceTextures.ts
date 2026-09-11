@@ -45,7 +45,7 @@ const C = {
   /** 紫の持ち手 */
   handle: '#2b3caf',
   /** 光る板 */
-  lampOff: '#7d8996',
+  lampOff: '#6f6f63',
   /** 操作ボタン。実機は濃紺 */
   button: '#3434c8',
   /** 銘板の濃い青 */
@@ -53,7 +53,7 @@ const C = {
   /** 液晶のアンバー。実機は暗めの琥珀 */
   lcd: '#9d7a2a',
   /** 祭室の奥。枠より一段暗く落として奥行きを出す */
-  chamber: '#4e5a6c',
+  chamber: '#251e0f',
 };
 
 export interface FaceArt {
@@ -240,10 +240,11 @@ function drawControlPanel(ctx: Ctx, lit: boolean, ink: string): void {
   // 銘板。下辺がすこし広がる台形
   const pw = 206;
   const px = SIZE / 2 - pw / 2;
+  // 実機の銘板は濃い青灰色の地に、銀色の文字
   const g = ctx.createLinearGradient(0, 210, 0, 246);
-  g.addColorStop(0, lit ? '#000' : '#eef1f6');
-  g.addColorStop(0.5, lit ? '#000' : C.silver);
-  g.addColorStop(1, lit ? '#000' : '#8f96a4');
+  g.addColorStop(0, lit ? '#000' : '#6e8290');
+  g.addColorStop(0.45, lit ? '#000' : '#3c4a68');
+  g.addColorStop(1, lit ? '#000' : '#222c48');
   ctx.fillStyle = g;
   ctx.beginPath();
   ctx.moveTo(px + 8, 210);
@@ -252,8 +253,15 @@ function drawControlPanel(ctx: Ctx, lit: boolean, ink: string): void {
   ctx.lineTo(px, 246);
   ctx.closePath();
   ctx.fill();
+  // 銘板の金の縁取り
+  if (!lit) {
+    ctx.strokeStyle = C.bodyHi;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+
   // 銘板の文字
-  ctx.fillStyle = lit ? '#000' : C.plateBlue;
+  ctx.fillStyle = lit ? '#000' : '#dde4ee';
   // 環境によって字幅が変わるので、銘板に収まる大きさを測って決める
   const label = 'CYBER-LABYRINTH MEGALITH';
   let fontPx = 14;
@@ -583,23 +591,36 @@ function faceDoor(ctx: Ctx, _ink: string, lit: boolean): void {
 
   // まぐさの上に広げた翼の浮き彫り
   if (!lit) {
-    const wy = top - 52;
-    ctx.fillStyle = C.bodyDark;
+    const wy = top - 56;
+    // 羽根を 3 枚重ねて、広げた翼にする
     for (const dir of [-1, 1]) {
-      ctx.beginPath();
-      ctx.moveTo(cx + dir * 14, wy);
-      ctx.quadraticCurveTo(cx + dir * 70, wy - 8, cx + dir * 104, wy + 2);
-      ctx.lineTo(cx + dir * 96, wy + 9);
-      ctx.quadraticCurveTo(cx + dir * 60, wy + 6, cx + dir * 14, wy + 11);
-      ctx.closePath();
-      ctx.fill();
+      for (let k = 0; k < 3; k += 1) {
+        const sp = 1 - k * 0.22;
+        ctx.fillStyle = k % 2 ? C.bodyHi : C.bodyDark;
+        ctx.beginPath();
+        ctx.moveTo(cx + dir * 16, wy + k * 7);
+        ctx.quadraticCurveTo(
+          cx + dir * 74 * sp,
+          wy - 10 + k * 7,
+          cx + dir * 112 * sp,
+          wy + 2 + k * 7,
+        );
+        ctx.quadraticCurveTo(
+          cx + dir * 66 * sp,
+          wy + 9 + k * 7,
+          cx + dir * 16,
+          wy + 10 + k * 7,
+        );
+        ctx.closePath();
+        ctx.fill();
+      }
     }
     ctx.fillStyle = C.bodyHi;
     ctx.beginPath();
-    ctx.arc(cx, wy + 5, 11, 0, Math.PI * 2);
+    ctx.arc(cx, wy + 9, 14, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = C.bodyDark;
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 3;
     ctx.stroke();
   }
 
@@ -607,84 +628,76 @@ function faceDoor(ctx: Ctx, _ink: string, lit: boolean): void {
   ctx.fillStyle = lit ? '#000' : C.chamber;
   ctx.fillRect(x, top, w, h);
   // 開口上辺の接触影
-  const sh = ctx.createLinearGradient(0, top, 0, top + h * 0.16);
-  sh.addColorStop(0, lit ? '#000' : 'rgba(0,0,0,0.6)');
+  const sh = ctx.createLinearGradient(0, top, 0, top + h * 0.07);
+  sh.addColorStop(0, lit ? '#000' : 'rgba(0,0,0,0.45)');
   sh.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = sh;
   ctx.fillRect(x, top, w, h * 0.16);
 
-  // 角丸正方形のタイル。6 列 x 4 段に並べ、
-  // 中央 2 列の下 3 段だけは胸像に譲る
-  const cols = 6;
-  const rows = 4;
-  const pad = 16;
-  const cw = (w - pad * 2) / cols;
-  const ch = (h - pad * 2 - 26) / rows;
-  const side = Math.min(cw, ch) * 0.74;
-  for (let col = 0; col < cols; col += 1) {
-    for (let row = 0; row < rows; row += 1) {
-      const middle = col === 2 || col === 3;
-      if (middle && row > 0) continue;
-      const lx = x + pad + cw * (col + 0.5) - side / 2;
-      const ly = top + pad + ch * (row + 0.5) - side / 2;
-      ctx.fillStyle = lit ? '#000' : C.lampOff;
-      roundRect(ctx, lx, ly, side, side, side * 0.22);
-      ctx.fill();
-      ctx.strokeStyle = lit ? '#000' : 'rgba(30, 40, 50, 0.55)';
+  // 実機のタイルは横長で、上に 3 枚、左右に 3 枚ずつの計 9 枚。
+  // 中央は像のために空けてある。
+  const tile = (tx: number, ty: number, tw: number, th: number): void => {
+    ctx.fillStyle = lit ? '#000' : C.lampOff;
+    roundRect(ctx, tx, ty, tw, th, 6);
+    ctx.fill();
+    if (!lit) {
+      ctx.strokeStyle = 'rgba(18, 16, 10, 0.6)';
       ctx.lineWidth = 2;
       ctx.stroke();
+      // 石板の面のわずかな照り
+      ctx.fillStyle = 'rgba(230, 232, 224, 0.12)';
+      ctx.fillRect(tx + 4, ty + 4, tw - 8, th * 0.3);
     }
+  };
+  const topW = 72;
+  const topH = 38;
+  for (let i = 0; i < 3; i += 1) {
+    tile(x + 18 + i * (topW + 8), top + 12, topW, topH);
+  }
+  const sideW = 62;
+  const sideH = 38;
+  for (let i = 0; i < 3; i += 1) {
+    const ty = top + 66 + i * (sideH + 12);
+    tile(x + 14, ty, sideW, sideH);
+    tile(x + w - 14 - sideW, ty, sideW, sideH);
   }
 
-  // 中央のファラオ胸像。奥の暗がりに立つので金は落ち着いた色にする
-  const gold = lit ? '#000' : '#b8883a';
-  const goldLit = lit ? '#000' : '#d6a75a';
-  const fy = top + h * 0.42;
-  const fw = w * 0.165;
-  ctx.fillStyle = gold;
-  // ネメス頭巾
+  // 中央のファラオ立像。実機は細長い金の像が台座に立っている
+  const gold = lit ? '#000' : '#b08a1e';
+  const goldLit = lit ? '#000' : '#d6ac3c';
+  const fx = cx;
+  const fTop = top + 56;
+  const fw = 30;
+  // 冠（背の高い二重冠）
+  ctx.fillStyle = goldLit;
   ctx.beginPath();
-  ctx.moveTo(cx - fw * 0.82, fy + fw * 0.3);
-  ctx.quadraticCurveTo(cx - fw * 0.82, fy - fw * 0.85, cx, fy - fw * 0.85);
-  ctx.quadraticCurveTo(cx + fw * 0.82, fy - fw * 0.85, cx + fw * 0.82, fy + fw * 0.3);
-  ctx.lineTo(cx + fw * 1.05, fy + fw * 1.45);
-  ctx.lineTo(cx - fw * 1.05, fy + fw * 1.45);
+  ctx.moveTo(fx - fw * 0.62, fTop + 30);
+  ctx.quadraticCurveTo(fx - fw * 0.5, fTop - 16, fx, fTop - 20);
+  ctx.quadraticCurveTo(fx + fw * 0.5, fTop - 16, fx + fw * 0.62, fTop + 30);
   ctx.closePath();
   ctx.fill();
-  // 頭巾の縞
-  if (!lit) {
-    ctx.fillStyle = 'rgba(40, 46, 60, 0.45)';
-    ctx.fillRect(cx - fw * 0.72, fy - fw * 0.5, fw * 1.44, fw * 0.16);
-    ctx.fillRect(cx - fw * 0.78, fy - fw * 0.22, fw * 1.56, fw * 0.14);
-  }
   // 顔
-  ctx.fillStyle = goldLit;
-  roundRect(ctx, cx - fw * 0.42, fy - fw * 0.22, fw * 0.84, fw * 1.05, fw * 0.24);
-  ctx.fill();
-  if (!lit) {
-    ctx.fillStyle = 'rgba(25, 30, 40, 0.7)';
-    ctx.fillRect(cx - fw * 0.26, fy + fw * 0.16, fw * 0.16, fw * 0.1);
-    ctx.fillRect(cx + fw * 0.1, fy + fw * 0.16, fw * 0.16, fw * 0.1);
-    // つけひげ
-    ctx.fillStyle = gold;
-    ctx.fillRect(cx - fw * 0.08, fy + fw * 0.8, fw * 0.16, fw * 0.4);
-  }
-  // 襟飾りと、胸の前で組んだ腕
   ctx.fillStyle = gold;
-  roundRect(ctx, cx - fw * 1.55, fy + fw * 1.45, fw * 3.1, fw * 1.15, 5);
+  roundRect(ctx, fx - fw * 0.42, fTop + 26, fw * 0.84, 24, 7);
   ctx.fill();
-  // 広い襟飾り
+  // 肩と胴
   ctx.fillStyle = goldLit;
   ctx.beginPath();
-  ctx.moveTo(cx - fw * 1.2, fy + fw * 1.5);
-  ctx.quadraticCurveTo(cx, fy + fw * 2.2, cx + fw * 1.2, fy + fw * 1.5);
-  ctx.lineTo(cx + fw * 1.45, fy + fw * 1.5);
-  ctx.quadraticCurveTo(cx, fy + fw * 2.6, cx - fw * 1.45, fy + fw * 1.5);
+  ctx.moveTo(fx - fw * 1.5, fTop + 54);
+  ctx.lineTo(fx + fw * 1.5, fTop + 54);
+  ctx.lineTo(fx + fw * 1.1, fTop + 122);
+  ctx.lineTo(fx - fw * 1.1, fTop + 122);
   ctx.closePath();
   ctx.fill();
-  // 胸の前で組んだ腕
+  // 襟飾りと組んだ腕
   ctx.fillStyle = gold;
-  ctx.fillRect(cx - fw * 1.35, fy + fw * 2.05, fw * 2.7, fw * 0.34);
+  ctx.fillRect(fx - fw * 1.35, fTop + 58, fw * 2.7, 10);
+  ctx.fillRect(fx - fw * 1.25, fTop + 82, fw * 2.5, 8);
+  // 台座
+  ctx.fillStyle = goldLit;
+  ctx.fillRect(fx - fw * 1.7, fTop + 122, fw * 3.4, 12);
+  ctx.fillStyle = gold;
+  ctx.fillRect(fx - fw * 2.0, fTop + 134, fw * 4.0, 10);
 
   // 像の下に降りる、幅広で低い 4 段の階段
   for (let i = 0; i < 4; i += 1) {
